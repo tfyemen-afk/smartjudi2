@@ -100,7 +100,20 @@ class ApiService {
       print('📡 [API] Response status: ${response.statusCode}');
       print('📡 [API] Response body: ${response.body}');
       
-      final responseData = jsonDecode(response.body);
+      // Handle empty response body
+      Map<String, dynamic> responseData;
+      if (response.body.isEmpty) {
+        print('⚠️ [API] Empty response body');
+        responseData = {};
+      } else {
+        try {
+          responseData = jsonDecode(response.body);
+        } catch (e) {
+          print('❌ [API] JSON decode error: $e');
+          print('❌ [API] Response body was: ${response.body}');
+          throw Exception('خطأ في قراءة البيانات من الخادم: ${e.toString()}');
+        }
+      }
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         print('✅ [API] Request successful');
@@ -173,12 +186,22 @@ class ApiService {
       ).timeout(ApiConfig.timeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _accessToken = data['access'];
-        return true;
+        if (response.body.isEmpty) {
+          print('⚠️ [API] Empty response body in refreshAccessToken');
+          return false;
+        }
+        try {
+          final data = jsonDecode(response.body);
+          _accessToken = data['access'];
+          return true;
+        } catch (e) {
+          print('❌ [API] JSON decode error in refreshAccessToken: $e');
+          return false;
+        }
       }
       return false;
     } catch (e) {
+      print('❌ [API] Error in refreshAccessToken: $e');
       return false;
     }
   }

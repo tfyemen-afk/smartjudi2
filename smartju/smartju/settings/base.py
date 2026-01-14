@@ -1,8 +1,7 @@
 """
 Django settings for smartju project - Base/Development Settings
-
 This file contains base settings shared across all environments.
-"""
+"""     
 
 from pathlib import Path
 from datetime import timedelta
@@ -21,7 +20,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-4cyci@v!&=khm4+b)(^n@
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.43.198', '10.0.2.2']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '192.168.0.147', '10.0.2.2']
 
 
 # Application definition

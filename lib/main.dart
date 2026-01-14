@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
@@ -38,7 +40,24 @@ import 'screens/contracts_agencies_screen.dart';
 import 'providers/settings_provider.dart';
 
 void main() {
-  runApp(const MyApp());
+  // Handle Flutter framework errors
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    if (kDebugMode) {
+      print('❌ [Flutter Error] ${details.exception}');
+      print('📋 [Flutter Error] Stack: ${details.stack}');
+    }
+  };
+
+  // Handle async errors
+  runZonedGuarded(() {
+    runApp(const MyApp());
+  }, (error, stack) {
+    if (kDebugMode) {
+      print('❌ [Zone Error] $error');
+      print('📋 [Zone Error] Stack: $stack');
+    }
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -54,7 +73,12 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) {
             final authProvider = AuthProvider(apiService: apiService);
-            authProvider.initialize();
+            // Initialize asynchronously without blocking
+            authProvider.initialize().catchError((error) {
+              if (kDebugMode) {
+                print('⚠️ [Auth] Error during initialization: $error');
+              }
+            });
             return authProvider;
           },
         ),
