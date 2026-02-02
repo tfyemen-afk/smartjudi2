@@ -16,8 +16,16 @@ class _ComplaintScreenState extends State<ComplaintScreen> {
   final _formKey = GlobalKey<FormState>();
   final _subjectController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final ApiService _apiService = ApiService();
+  late ApiService _apiService;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+    });
+  }
 
   @override
   void dispose() {

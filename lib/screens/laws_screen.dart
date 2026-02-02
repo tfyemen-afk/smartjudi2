@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dart:developer' as developer;
 
@@ -11,7 +13,7 @@ class LawsScreen extends StatefulWidget {
 }
 
 class _LawsScreenState extends State<LawsScreen> {
-  final ApiService _apiService = ApiService();
+  late ApiService _apiService;
   bool _isLoading = false;
   List<Map<String, dynamic>> _laws = [];
   String _selectedCategory = 'الكل';
@@ -19,7 +21,10 @@ class _LawsScreenState extends State<LawsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadLaws();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+      _loadLaws();
+    });
   }
 
   Future<void> _loadLaws() async {

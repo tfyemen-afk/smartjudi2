@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dart:developer' as developer;
 
@@ -14,8 +16,16 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
-  final ApiService _apiService = ApiService();
+  late ApiService _apiService;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+    });
+  }
 
   @override
   void dispose() {

@@ -53,11 +53,33 @@ dependencies:
   # JWT decoder
   jwt_decoder: ^2.0.1
   
+  # Hijri Calendar
+  hijri: ^3.0.0
+  
+  # Table Calendar
+  table_calendar: ^3.1.2
+  
+  # Local Notifications
+  flutter_local_notifications: ^18.0.1
+  
+  # Timezone support
+  timezone: ^0.10.0
+  
+  # URL Launcher for opening links
+  url_launcher: ^6.2.4
+  
+  # WebView for in-app browsing
+  webview_flutter: ^4.4.2
+  
   # File picker for attachments (commented out - will add when needed)
   # file_picker: ^6.1.1
   
   # Image picker (commented out - will add when needed)
+  # Image picker (commented out - will add when needed)
   # image_picker: ^1.0.7
+
+  # HTML Rendering
+  flutter_html: ^3.0.0-beta.2
 
 dev_dependencies:
   flutter_test:

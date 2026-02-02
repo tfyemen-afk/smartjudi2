@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import LegalCategory, Law, LawChapter, LawSection, LawArticle, CaseLegalReference
+from .models import LegalCategory, Law, LawChapter, LawSection, LawArticle, CaseLegalReference, LegalArticleFlat
 
 
 @admin.register(LegalCategory)
@@ -48,3 +48,10 @@ class CaseLegalReferenceAdmin(admin.ModelAdmin):
     search_fields = ('lawsuit__case_number', 'article__article_number')
     ordering = ('-confidence_score', '-created_at')
 
+
+@admin.register(LegalArticleFlat)
+class LegalArticleFlatAdmin(admin.ModelAdmin):
+    list_display = ('article_number', 'source_title', 'book_title', 'section_title', 'created_at')
+    list_filter = ('source_title', 'book_title')
+    search_fields = ('source_title', 'article_number', 'article_text')
+    ordering = ('source_title', 'article_number')

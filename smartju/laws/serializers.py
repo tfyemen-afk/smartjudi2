@@ -1,7 +1,43 @@
 from rest_framework import serializers
-from .models import LegalCategory, Law, LawChapter, LawSection, LawArticle, CaseLegalReference
+from .models import LegalCategory, Law, LawChapter, LawSection, LawArticle, CaseLegalReference, LegalArticleFlat, LegalProcedureNode
 from lawsuits.serializers import LawsuitSerializer
 from smartju.common_fields import LawsuitPrimaryKeyField
+
+
+class LegalArticleFlatSerializer(serializers.ModelSerializer):
+    """
+    Serializer للمواد القانونية المسطحة - للبحث السريع
+    """
+    class Meta:
+        model = LegalArticleFlat
+        fields = (
+            'id', 'source_title', 'book_title', 'section_title',
+            'chapter_title', 'branch_title', 'article_number',
+            'article_text', 'created_at'
+        )
+        read_only_fields = ('id', 'created_at')
+
+
+class LegalArticleFlatListSerializer(serializers.ModelSerializer):
+    """
+    Serializer مختصر للقوائم - بدون نص المادة الكامل
+    """
+    article_text_preview = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = LegalArticleFlat
+        fields = (
+            'id', 'source_title', 'book_title', 'section_title',
+            'chapter_title', 'branch_title', 'article_number',
+            'article_text_preview', 'created_at'
+        )
+        read_only_fields = ('id', 'created_at')
+    
+    def get_article_text_preview(self, obj):
+        """إرجاع أول 200 حرف من نص المادة"""
+        if obj.article_text:
+            return obj.article_text[:200] + ('...' if len(obj.article_text) > 200 else '')
+        return ''
 
 
 class LegalCategorySerializer(serializers.ModelSerializer):
@@ -68,4 +104,13 @@ class CaseLegalReferenceSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+
+class LegalProcedureNodeSerializer(serializers.ModelSerializer):
+    """
+    Serializer لدليل الإجراءات
+    """
+    class Meta:
+        model = LegalProcedureNode
+        fields = '__all__'
 

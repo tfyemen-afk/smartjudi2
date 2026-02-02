@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dart:developer' as developer;
 import 'package:intl/intl.dart';
@@ -12,7 +14,7 @@ class DailySessionsScreen extends StatefulWidget {
 }
 
 class _DailySessionsScreenState extends State<DailySessionsScreen> {
-  final ApiService _apiService = ApiService();
+  late ApiService _apiService;
   bool _isLoading = false;
   List<Map<String, dynamic>> _sessions = [];
   DateTime _selectedDate = DateTime.now();
@@ -20,7 +22,10 @@ class _DailySessionsScreenState extends State<DailySessionsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadSessions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+      _loadSessions();
+    });
   }
 
   Future<void> _loadSessions() async {

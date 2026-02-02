@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import 'dart:developer' as developer;
 
@@ -11,14 +13,17 @@ class SupremeCourtScreen extends StatefulWidget {
 }
 
 class _SupremeCourtScreenState extends State<SupremeCourtScreen> {
-  final ApiService _apiService = ApiService();
+  late ApiService _apiService;
   bool _isLoading = false;
   Map<String, dynamic>? _courtInfo;
 
   @override
   void initState() {
     super.initState();
-    _loadCourtInfo();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+      _loadCourtInfo();
+    });
   }
 
   Future<void> _loadCourtInfo() async {

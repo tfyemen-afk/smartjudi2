@@ -308,3 +308,50 @@ class CaseLegalReference(models.Model):
     def __str__(self):
         return f'{self.lawsuit.case_number} - {self.article.article_number}'
 
+
+class LegalArticleFlat(models.Model):
+    """
+    Flat Legal Articles model - نسخة مسطحة من المواد القانونية للبحث السريع
+    """
+    source_title = models.CharField(max_length=255, verbose_name='المصدر')
+    book_title = models.CharField(max_length=255, blank=True, null=True, verbose_name='الكتاب')
+    section_title = models.CharField(max_length=255, blank=True, null=True, verbose_name='القسم')
+    chapter_title = models.CharField(max_length=255, blank=True, null=True, verbose_name='الفصل')
+    branch_title = models.CharField(max_length=255, blank=True, null=True, verbose_name='الفرع')
+    article_number = models.CharField(max_length=50, verbose_name='رقم المادة')
+    article_text = models.TextField(verbose_name='نص المادة')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإضافة')
+
+    class Meta:
+        verbose_name = 'مادة قانونية (مسطحة)'
+        verbose_name_plural = 'مواد قانونية (مسطحة)'
+        db_table = 'legal_articles'  # التزاماً بالاسم المطلوب من المستخدم
+
+    def __str__(self):
+        return f"{self.source_title} - مادة {self.article_number}"
+
+class LegalProcedureNode(models.Model):
+    """
+    Legal Procedure Node Model - عقد دليل الإجراءات
+    Matches structure of book_nodes table in old DB
+    """
+    id = models.BigIntegerField(primary_key=True, verbose_name='المعرف')
+    source_title = models.CharField(max_length=255, verbose_name='عنوان المصدر')
+    level = models.CharField(max_length=50, verbose_name='المستوى')
+    title = models.TextField(verbose_name='العنوان')
+    body = models.TextField(verbose_name='المحتوى', blank=True, null=True)
+    parent_id = models.BigIntegerField(null=True, blank=True, verbose_name='رقم الأب')
+    page_from = models.IntegerField(null=True, blank=True, verbose_name='من صفحة')
+    page_to = models.IntegerField(null=True, blank=True, verbose_name='إلى صفحة')
+
+    class Meta:
+        db_table = 'book_nodes'
+        verbose_name = 'بند دليل الإجراءات'
+        verbose_name_plural = 'بنود دليل الإجراءات'
+        indexes = [
+            models.Index(fields=['title']),
+            # models.Index(fields=['body']), # Text fields indexing depends on DB backend
+        ]
+
+    def __str__(self):
+        return self.title[:50]

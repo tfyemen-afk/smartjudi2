@@ -17,6 +17,7 @@ import 'screens/laws_screen.dart';
 import 'screens/services_screen.dart';
 import 'screens/complaint_screen.dart';
 import 'screens/daily_sessions_screen.dart';
+import 'screens/calendar_screen.dart';
 import 'screens/electronic_lawsuit_screen.dart';
 import 'screens/supreme_court_screen.dart';
 import 'screens/faq_screen.dart';
@@ -36,6 +37,9 @@ import 'screens/area_calculation_screen.dart';
 import 'screens/notary_accounting_screen.dart';
 import 'screens/contracts_agencies_screen.dart';
 import 'providers/settings_provider.dart';
+import 'providers/notification_provider.dart';
+import 'screens/notifications_screen.dart';
+import 'screens/electronic_services_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -66,6 +70,12 @@ class MyApp extends StatelessWidget {
             final settingsProvider = SettingsProvider();
             settingsProvider.initialize();
             return settingsProvider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
+          create: (_) => NotificationProvider(apiService),
+          update: (_, authProvider, previous) {
+            return NotificationProvider(apiService);
           },
         ),
       ],
@@ -107,6 +117,7 @@ class MyApp extends StatelessWidget {
               '/services': (context) => const ServicesScreen(),
               '/complaint': (context) => const ComplaintScreen(),
               '/daily-sessions': (context) => const DailySessionsScreen(),
+              '/calendar': (context) => const CalendarScreen(),
               '/electronic-lawsuit': (context) => const ElectronicLawsuitScreen(),
               '/supreme-court': (context) => const SupremeCourtScreen(),
               '/faq': (context) => const FAQScreen(),
@@ -124,6 +135,8 @@ class MyApp extends StatelessWidget {
               '/area-calculation': (context) => const AreaCalculationScreen(),
               '/notary-accounting': (context) => const NotaryAccountingScreen(),
               '/contracts-agencies': (context) => const ContractsAgenciesScreen(),
+              '/notifications': (context) => const NotificationsScreen(),
+              '/electronic-services': (context) => const ElectronicServicesScreen(),
             },
           );
         },

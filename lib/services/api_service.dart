@@ -585,6 +585,109 @@ class ApiService {
     return await getLaws(queryParams: {'search': query});
   }
 
+  // ========== Legal Library API (Full-Text Search) ==========
+  
+  /// Get legal articles with optional search and filters
+  Future<Map<String, dynamic>> getLegalLibrary({
+    String? searchQuery,
+    String? source,
+    String? book,
+    String? section,
+    String? chapter,
+    String? branch,
+    String? articleNumber,
+    String? ordering,
+    int? page,
+  }) async {
+    String endpoint = '/api/legal-library/';
+    final params = <String, String>{};
+    
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      params['q'] = searchQuery;
+    }
+    if (source != null && source.isNotEmpty) {
+      params['source'] = source;
+    }
+    if (book != null && book.isNotEmpty) {
+      params['book'] = book;
+    }
+    if (section != null && section.isNotEmpty) {
+      params['section'] = section;
+    }
+    if (chapter != null && chapter.isNotEmpty) {
+      params['chapter'] = chapter;
+    }
+    if (branch != null && branch.isNotEmpty) {
+      params['branch'] = branch;
+    }
+    if (articleNumber != null && articleNumber.isNotEmpty) {
+      params['article_number'] = articleNumber;
+    }
+    if (ordering != null && ordering.isNotEmpty) {
+      params['ordering'] = ordering;
+    }
+    if (page != null) {
+      params['page'] = page.toString();
+    }
+    
+    if (params.isNotEmpty) {
+      final queryString = params.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      endpoint += '?$queryString';
+    }
+    
+    return await _makeRequest('GET', endpoint);
+  }
+  
+  /// Get legal article details
+  Future<Map<String, dynamic>> getLegalArticle(int id) async {
+    return await _makeRequest('GET', '/api/legal-library/$id/');
+  }
+  
+  /// Get legal library sources (with article counts)
+  Future<Map<String, dynamic>> getLegalLibrarySources() async {
+    return await _makeRequest('GET', '/api/legal-library/sources/');
+  }
+
+  /// Get legal library books
+  Future<Map<String, dynamic>> getLegalLibraryBooks({String? source}) async {
+    String endpoint = '/api/legal-library/books/';
+    if (source != null && source.isNotEmpty) {
+      endpoint += '?source=${Uri.encodeComponent(source)}';
+    }
+    return await _makeRequest('GET', endpoint);
+  }
+
+  /// Get legal library chapters
+  Future<Map<String, dynamic>> getLegalLibraryChapters({String? source, String? book}) async {
+    String endpoint = '/api/legal-library/chapters/';
+    final params = <String, String>{};
+    if (source != null && source.isNotEmpty) {
+      params['source'] = source;
+    }
+    if (book != null && book.isNotEmpty) {
+      params['book'] = book;
+    }
+    if (params.isNotEmpty) {
+      final queryString = params.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      endpoint += '?$queryString';
+    }
+    return await _makeRequest('GET', endpoint);
+  }
+  
+  /// Search with highlighting
+  Future<Map<String, dynamic>> searchLegalLibrary(String query) async {
+    return await _makeRequest('GET', '/api/legal-library/search/?q=${Uri.encodeComponent(query)}');
+  }
+  
+  /// Get legal library statistics
+  Future<Map<String, dynamic>> getLegalLibraryStats() async {
+    return await _makeRequest('GET', '/api/legal-library/stats/');
+  }
+
   // ========== Hearings API (Daily Sessions) ==========
   
   // Get daily hearings
@@ -726,6 +829,73 @@ class ApiService {
         if (name != null) 'name': name,
       },
     );
+  }
+
+  // ========== Notifications API ==========
+  
+  // Get all notifications
+  Future<Map<String, dynamic>> getNotifications({Map<String, String>? queryParams}) async {
+    String endpoint = '/api/notifications/';
+    if (queryParams != null && queryParams.isNotEmpty) {
+      final queryString = queryParams.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      endpoint += '?$queryString';
+    }
+    return await _makeRequest('GET', endpoint);
+  }
+
+  // Mark notification as read
+  Future<Map<String, dynamic>> markNotificationAsRead(String notificationId) async {
+    return await _makeRequest(
+      'PATCH',
+      '/api/notifications/$notificationId/',
+      body: {'is_read': true},
+    );
+  }
+
+  // Mark all notifications as read
+  Future<Map<String, dynamic>> markAllNotificationsAsRead() async {
+    return await _makeRequest(
+      'POST',
+      '/api/notifications/mark-all-read/',
+    );
+  }
+
+  // Delete notification
+  Future<Map<String, dynamic>> deleteNotification(String notificationId) async {
+    return await _makeRequest('DELETE', '/api/notifications/$notificationId/');
+  }
+
+  // ========== Legal Procedures Guide API ==========
+  
+  /// Get legal procedures
+  Future<Map<String, dynamic>> getLegalProcedures(
+      {int page = 1, String? search, String? source, String? level}) async {
+    final params = <String, String>{
+      'page': page.toString(),
+    };
+    if (search != null && search.isNotEmpty) params['q'] = search;
+    if (source != null && source.isNotEmpty) params['source'] = source;
+    if (level != null && level.isNotEmpty) params['level'] = level;
+
+    final queryString = params.entries
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+        
+    String endpoint = '/api/legal-procedures/';
+    if (search != null && search.isNotEmpty) {
+       endpoint = '/api/legal-procedures/search/';
+    }
+    
+    endpoint += '?$queryString';
+
+    return await _makeRequest('GET', endpoint);
+  }
+
+  /// Get legal procedures sources
+  Future<Map<String, dynamic>> getLegalProceduresSources() async {
+    return await _makeRequest('GET', '/api/legal-procedures/sources/');
   }
 }
 

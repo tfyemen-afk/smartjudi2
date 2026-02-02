@@ -18,6 +18,7 @@ import 'inheritance_calculation_screen.dart';
 import 'area_calculation_screen.dart';
 import 'notary_accounting_screen.dart';
 import 'contracts_agencies_screen.dart';
+import 'electronic_services_screen.dart';
 
 /// Services Screen - خدماتنا
 class ServicesScreen extends StatelessWidget {
@@ -32,6 +33,14 @@ class ServicesScreen extends StatelessWidget {
 
     // Services for lawyers - الخدمات التي نقدمها للمحامي
     final lawyerServices = [
+      {
+        'title': 'الخدمات الإلكترونية والروابط',
+        'description': 'الوصول إلى الخدمات الإلكترونية والروابط المهمة',
+        'icon': Icons.link,
+        'color': const Color(0xFF1E3A8A),
+        'route': '/electronic-services',
+        'screen': const ElectronicServicesScreen(),
+      },
       {
         'title': 'قاعدة البيانات القانونية والدليل',
         'description': 'دليل الإجراءات، بحث ذكي، نسخ وتحميل، جميع القوانين اليمنية المحدثة، القرارات والمنشورات، دليل المحامين، معلومات المحاكم والنيابات',
@@ -101,6 +110,14 @@ class ServicesScreen extends StatelessWidget {
     // Services for notaries (الأمين الشرعي) - الخدمات التي نقدمها للأمين الشرعي
     final notaryServices = [
       {
+        'title': 'الخدمات الإلكترونية والروابط',
+        'description': 'الوصول إلى الخدمات الإلكترونية والروابط المهمة',
+        'icon': Icons.link,
+        'color': const Color(0xFF1E3A8A),
+        'route': '/electronic-services',
+        'screen': const ElectronicServicesScreen(),
+      },
+      {
         'title': 'دليل الإجراءات',
         'description': 'دليل الإجراءات للأمناء وميزة البحث الذكي والنسخ والتحميل، جميع القوانين اليمنية المحدثة والقرارات والتعميمات، معرفة الأمناء ومناطق اختصاصهم والبحث عنهم والتواصل معهم',
         'icon': Icons.book,
@@ -152,6 +169,14 @@ class ServicesScreen extends StatelessWidget {
 
     // General services for all users
     final generalServices = [
+      {
+        'title': 'الخدمات الإلكترونية والروابط',
+        'description': 'الوصول إلى الخدمات الإلكترونية والروابط المهمة',
+        'icon': Icons.link,
+        'color': const Color(0xFF1E3A8A),
+        'route': '/electronic-services',
+        'screen': const ElectronicServicesScreen(),
+      },
       {
         'title': 'رفع دعوى إلكترونية',
         'description': 'رفع الدعاوى إلكترونياً بسهولة',

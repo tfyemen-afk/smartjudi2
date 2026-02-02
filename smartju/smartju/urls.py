@@ -32,7 +32,8 @@ from courts.views import (
 from payments.views import PaymentOrderViewSet
 from laws.views import (
     LegalCategoryViewSet, LawViewSet, LawChapterViewSet,
-    LawSectionViewSet, LawArticleViewSet, CaseLegalReferenceViewSet
+    LawSectionViewSet, LawArticleViewSet, CaseLegalReferenceViewSet,
+    LegalArticleFlatViewSet, LegalProcedureViewSet
 )
 from logs.views import UserSessionViewSet, SearchLogViewSet, AIChatLogViewSet
 
@@ -65,6 +66,9 @@ router.register(r'law-chapters', LawChapterViewSet, basename='law-chapter')
 router.register(r'law-sections', LawSectionViewSet, basename='law-section')
 router.register(r'law-articles', LawArticleViewSet, basename='law-article')
 router.register(r'case-legal-references', CaseLegalReferenceViewSet, basename='case-legal-reference')
+# Legal Library - Full-Text Search
+router.register(r'legal-library', LegalArticleFlatViewSet, basename='legal-library')
+router.register(r'legal-procedures', LegalProcedureViewSet, basename='legal-procedure')
 # Logs
 router.register(r'user-sessions', UserSessionViewSet, basename='user-session')
 router.register(r'search-logs', SearchLogViewSet, basename='search-log')
@@ -163,6 +167,9 @@ def home_view(request):
                 'law_sections': '/api/law-sections/',
                 'law_articles': '/api/law-articles/',
                 'case_legal_references': '/api/case-legal-references/',
+                'legal_library': '/api/legal-library/',
+                'legal_library_sources': '/api/legal-library/sources/',
+                'legal_library_search': '/api/legal-library/search/',
                 'user_sessions': '/api/user-sessions/',
                 'search_logs': '/api/search-logs/',
                 'ai_chat_logs': '/api/ai-chat-logs/',

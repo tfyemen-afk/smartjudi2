@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
 /// Contact Us Screen - تواصل بنا
@@ -15,8 +17,16 @@ class _ContactUsScreenState extends State<ContactUsScreen> {
   final _emailController = TextEditingController();
   final _subjectController = TextEditingController();
   final _messageController = TextEditingController();
-  final _apiService = ApiService();
+  late ApiService _apiService;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _apiService = Provider.of<AuthProvider>(context, listen: false).apiService;
+    });
+  }
 
   @override
   void dispose() {
