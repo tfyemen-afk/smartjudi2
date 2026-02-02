@@ -1,8 +1,7 @@
 """
 Django settings for smartju project - Base/Development Settings
-
 This file contains base settings shared across all environments.
-"""
+"""     
 
 from pathlib import Path
 from datetime import timedelta
