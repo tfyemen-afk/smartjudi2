@@ -110,10 +110,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         _loadLawsuit();
         _loadParties();
         _loadAttachments();
-        // تحميل الجلسات والأحكام مرة واحدة فقط عند الدخول
-        final provider = Provider.of<LawsuitProvider>(context, listen: false);
-        provider.loadHearings(widget.lawsuitId!);
-        provider.loadJudgments(widget.lawsuitId!);
+        // الجلسات والأحكام تُحمَّل بعد اكتمال تحميل الدعوى (انظر _loadLawsuit)
       });
     } else {
       // Load templates for default case type
@@ -421,6 +418,13 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       }
       if (lawsuit.requests != null && _legalTextControllers.containsKey('requests')) {
         _legalTextControllers['requests']!.text = lawsuit.requests!;
+      }
+
+      // تحميل الجلسات والأحكام بعد اكتمال تحميل الدعوى
+      // (نؤجّل حتى هنا لتفادي تزامن notifyListeners مع تحميل الدعوى)
+      if (mounted) {
+        provider.loadHearings(widget.lawsuitId!);
+        provider.loadJudgments(widget.lawsuitId!);
       }
     }
   }
@@ -1002,10 +1006,44 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
             : null,
       ),
       body: _isEditMode
-          ? Consumer<LawsuitProvider>(
-              builder: (context, provider, child) {
-                if (provider.isLoading && provider.selectedLawsuit == null) {
-                  return const Center(child: CircularProgressIndicator());
+          ? Selector<LawsuitProvider, (bool, bool)>(
+              // نراقب isLoading + وجود selectedLawsuit فقط
+              // تغييرات isLoadingHearings/isLoadingJudgments لا تُعيد بناء الفورم كله
+              selector: (_, p) =>
+                  (p.isLoading, p.selectedLawsuit != null),
+              builder: (context, data, _) {
+                final isLoading = data.$1;
+                final hasLawsuit = data.$2;
+                if (isLoading && !hasLawsuit) {
+                  return const Center(
+                    child: CircularProgressIndicator(
+                        color: Color(0xFFD4AF37)),
+                  );
+                }
+                if (!isLoading && !hasLawsuit) {
+                  // فشل التحميل — زر إعادة المحاولة
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_off,
+                            size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text('تعذّر تحميل بيانات الدعوى',
+                            style: TextStyle(color: Colors.grey)),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _loadLawsuit,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD4AF37),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 }
                 return _buildForm();
               },
