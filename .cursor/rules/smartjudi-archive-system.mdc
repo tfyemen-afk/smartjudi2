@@ -1,0 +1,158 @@
+---
+alwaysApply: true
+---
+
+# SmartJudi2 — Legal Case Archive System Architecture
+
+SmartJudi2 is a Yemeni AI-powered judicial platform built with **Flutter** (frontend) and **Django REST Framework** (backend, hosted on Render).
+
+## Core principle: EXTEND, never duplicate
+
+All case data lives in a single unified archive. Never create a parallel model or endpoint when an existing one can be extended.
+
+---
+
+## Models (lib/models/)
+
+| File | Purpose | Key new fields |
+|------|---------|----------------|
+| [lawsuit_model.dart](mdc:lib/models/lawsuit_model.dart) | Core case record | `courtLevel`, `department`, `lawyerId`, `lawyerName`, `judgmentsCount`, `aiSummary`, `relatedLaws`, `similarCases`, `legalRiskLevel`, `successProbability`, `ragMetadata` |
+| [party_model.dart](mdc:lib/models/party_model.dart) | Case parties (plaintiff/defendant/witness/expert/legal_agent/notary) | `idNumber`, `role` |
+| [hearing_model.dart](mdc:lib/models/hearing_model.dart) | Court hearing sessions | `hearingType`, `decision`, `nextHearingDate`, `judgeName` |
+| [judgment_model.dart](mdc:lib/models/judgment_model.dart) | Court judgments | `courtLevel`, `judgmentType`, `fullText`, `documentReference` |
+| [case_timeline_model.dart](mdc:lib/models/case_timeline_model.dart) | Unified timeline events | `eventType`, `eventDate`, `relatedId` |
+| [appeal_model.dart](mdc:lib/models/appeal_model.dart) | Appeals / طعون | unchanged |
+| [payment_order_model.dart](mdc:lib/models/payment_order_model.dart) | Payment orders | unchanged |
+
+---
+
+## Services (lib/services/)
+
+### [api_service.dart](mdc:lib/services/api_service.dart)
+
+All HTTP calls go through `ApiService._makeRequest()`. Never create a second HTTP client.
+
+**Archive-specific methods:**
+- `getArchiveStats()` → `GET /api/lawsuits/stats/`
+- `archiveLawsuit(id)` → `POST /api/lawsuits/{id}/archive/`
+- `unarchiveLawsuit(id)` → `POST /api/lawsuits/{id}/unarchive/`
+
+**Hearing CRUD** (new):
+- `createHearing(data)` / `updateHearing(id, data)` / `deleteHearing(id)`
+
+**Judgment CRUD** (new):
+- `createJudgment(data)` / `updateJudgment(id, data)` / `deleteJudgment(id)`
+
+**Case Timeline** (new):
+- `getCaseTimeline(lawsuitId)` → `GET /api/lawsuits/{id}/timeline/`
+
+**AI Analysis** (new):
+- `analyzeCaseWithAI(lawsuitId)` → `POST /api/lawsuits/{id}/analyze/`
+
+**Advanced search** (new):
+- `searchByPartyName(name)` — passes `party_name` query param
+- `searchByCourtLevel(level)` — passes `court_level` query param
+
+### [ai_api_service.dart](mdc:lib/services/ai_api_service.dart)
+
+Handles direct AI chat (`/api/ai/chat/`) and RAG document management. Do not duplicate its token handling.
+
+---
+
+## Configuration (lib/config/)
+
+### [api_config.dart](mdc:lib/config/api_config.dart)
+
+**All endpoint constants live here.** New Django endpoints must be added as constants first.
+
+New endpoint helpers (functions, not constants):
+```dart
+ApiConfig.caseTimelineEndpoint(lawsuitId)  // /api/lawsuits/{id}/timeline/
+ApiConfig.caseAnalyzeEndpoint(lawsuitId)   // /api/lawsuits/{id}/analyze/
+```
+
+---
+
+## Providers (lib/providers/)
+
+### [lawsuit_provider.dart](mdc:lib/providers/lawsuit_provider.dart)
+
+Single provider for all case archive state. Extended with:
+
+**New filters:** `courtLevelFilter`, `lawyerFilter`, `filingDateFrom/To`
+
+**New sub-data loaders:**
+- `loadHearings(lawsuitId)` / `createHearing` / `updateHearing` / `deleteHearing`
+- `loadJudgments(lawsuitId)` / `createJudgment` / `updateJudgment` / `deleteJudgment`
+- `loadCaseTimeline(lawsuitId)` — populates `timeline` list
+- `analyzeCaseWithAI(lawsuitId)` — triggers RAG analysis, refreshes `selectedLawsuit`
+
+---
+
+## Screens (lib/screens/)
+
+| Screen | Route | Purpose |
+|--------|-------|---------|
+| [archive_screen.dart](mdc:lib/screens/archive_screen.dart) | (tab) | Central archive: list/grid, search, filter, archive/unarchive |
+| [case_timeline_screen.dart](mdc:lib/screens/case_timeline_screen.dart) | push | Chronological case timeline |
+| [lawsuit_detail_screen.dart](mdc:lib/screens/lawsuit_detail_screen.dart) | push | Full case form: parties, attachments, hearings, judgments, AI |
+
+**Filter sheet now supports:** case_type, case_status, archive_status, court_level, filing date range, ordering.
+
+---
+
+## Party Roles
+
+```
+plaintiff   → المدعي
+defendant   → المدعى عليه
+witness     → الشاهد
+expert      → الخبير
+legal_agent → الوكيل القانوني
+notary      → الأمين الشرعي
+```
+
+`PlaintiffModel` and `DefendantModel` extend `PartyModel` for backward-compatibility with existing `/api/plaintiffs/` and `/api/defendants/` endpoints.
+
+---
+
+## Court Levels
+
+```
+first_instance → ابتدائي
+appeal         → استئناف
+supreme        → عليا / تمييز
+```
+
+Used in both `LawsuitModel.courtLevel` and `JudgmentModel.courtLevel`.
+
+---
+
+## AI / RAG Integration
+
+AI fields on `LawsuitModel` (populated by backend after `analyze/` call):
+- `aiSummary` — ملخص ذكي للقضية
+- `relatedLaws` — List<String> of relevant law articles
+- `similarCases` — List<String> of similar case IDs
+- `legalRiskLevel` — low | medium | high
+- `successProbability` — 0.0–1.0
+
+`ragMetadata` — opaque string for ChromaDB indexing hints.
+
+---
+
+## Database compatibility rules
+
+1. Add fields as **nullable** on first migration to preserve existing rows.
+2. Never rename existing columns — add a new one and deprecate the old one.
+3. Keep `archive_status` (active | semi_active | archived) as the primary lifecycle field.
+4. `is_deleted` + `deleted_at` implement soft delete — never hard-delete cases.
+
+---
+
+## Do NOT
+
+- Do NOT create a second HTTP service class.
+- Do NOT duplicate case type / status constants — use `LawsuitModel.caseTypeDisplay`.
+- Do NOT bypass `ApiService` for authenticated calls.
+- Do NOT create a second "CaseModel" that shadows `LawsuitModel`.

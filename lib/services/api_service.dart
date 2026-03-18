@@ -1061,5 +1061,110 @@ class ApiService {
   Future<Map<String, dynamic>> getLegalProceduresSources() async {
     return await _makeRequest('GET', '/api/legal-procedures/sources/');
   }
+
+  // ========== Hearings CRUD (Full Archive Support) ==========
+
+  /// Create a new hearing session for a case
+  Future<Map<String, dynamic>> createHearing(
+      Map<String, dynamic> hearingData) async {
+    return await _makeRequest(
+      'POST',
+      ApiConfig.hearingsEndpoint,
+      body: hearingData,
+    );
+  }
+
+  /// Update an existing hearing
+  Future<Map<String, dynamic>> updateHearing(
+      int id, Map<String, dynamic> hearingData) async {
+    return await _makeRequest(
+      'PATCH',
+      '${ApiConfig.hearingsEndpoint}$id/',
+      body: hearingData,
+    );
+  }
+
+  /// Delete a hearing
+  Future<void> deleteHearing(int id) async {
+    await _makeRequest('DELETE', '${ApiConfig.hearingsEndpoint}$id/');
+  }
+
+  // ========== Judgments CRUD (Full Archive Support) ==========
+
+  /// Create a new judgment record for a case
+  Future<Map<String, dynamic>> createJudgment(
+      Map<String, dynamic> judgmentData) async {
+    return await _makeRequest(
+      'POST',
+      ApiConfig.judgmentsEndpoint,
+      body: judgmentData,
+    );
+  }
+
+  /// Update an existing judgment
+  Future<Map<String, dynamic>> updateJudgment(
+      int id, Map<String, dynamic> judgmentData) async {
+    return await _makeRequest(
+      'PATCH',
+      '${ApiConfig.judgmentsEndpoint}$id/',
+      body: judgmentData,
+    );
+  }
+
+  /// Delete a judgment
+  Future<void> deleteJudgment(int id) async {
+    await _makeRequest('DELETE', '${ApiConfig.judgmentsEndpoint}$id/');
+  }
+
+  // ========== Case Timeline (Step 8) ==========
+
+  /// Fetch the unified chronological timeline for a case.
+  ///
+  /// The backend aggregates: filing date, hearings, uploaded documents,
+  /// judgments, appeals, and payment orders into a single ordered list.
+  ///
+  /// Endpoint: GET /api/lawsuits/{id}/timeline/
+  Future<Map<String, dynamic>> getCaseTimeline(int lawsuitId) async {
+    return await _makeRequest(
+      'GET',
+      ApiConfig.caseTimelineEndpoint(lawsuitId),
+    );
+  }
+
+  // ========== AI Case Analysis (Step 7) ==========
+
+  /// Request AI-powered legal analysis for a specific case.
+  ///
+  /// The backend runs the case data through the RAG system and returns:
+  ///   - ai_summary
+  ///   - related_laws
+  ///   - similar_cases
+  ///   - legal_risk_level
+  ///   - success_probability
+  ///
+  /// Endpoint: POST /api/lawsuits/{id}/analyze/
+  Future<Map<String, dynamic>> analyzeCaseWithAI(int lawsuitId) async {
+    return await _makeRequest(
+      'POST',
+      ApiConfig.caseAnalyzeEndpoint(lawsuitId),
+    );
+  }
+
+  // ========== Advanced Case Search (Step 9) ==========
+
+  /// Search cases by party name (searches across plaintiffs and defendants).
+  Future<Map<String, dynamic>> searchByPartyName(String partyName) async {
+    return await getLawsuits(
+      queryParams: {'party_name': Uri.encodeComponent(partyName)},
+    );
+  }
+
+  /// Search cases by court level.
+  Future<Map<String, dynamic>> searchByCourtLevel(String courtLevel,
+      {Map<String, String>? extraParams}) async {
+    final params = <String, String>{'court_level': courtLevel};
+    if (extraParams != null) params.addAll(extraParams);
+    return await getLawsuits(queryParams: params);
+  }
 }
 

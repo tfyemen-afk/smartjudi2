@@ -11,19 +11,25 @@ class HearingSerializer(serializers.ModelSerializer):
     """
     lawsuit = LawsuitSerializer(read_only=True)
     lawsuit_id = LawsuitPrimaryKeyField(
-        source='lawsuit', 
+        source='lawsuit',
         write_only=True,
         required=False,
         allow_null=True
     )
     judge = UserSerializer(read_only=True)
     hearing_type_display = serializers.CharField(source='get_hearing_type_display', read_only=True)
-    
+    decision_display = serializers.CharField(source='get_decision_display', read_only=True)
+
     class Meta:
         model = Hearing
         fields = (
-            'id', 'lawsuit', 'lawsuit_id', 'hearing_date', 'hijri_date', 'hearing_time',
-            'notes', 'judge_name', 'judge', 'hearing_type', 'hearing_type_display',
-            'created_at', 'updated_at'
+            'id', 'lawsuit', 'lawsuit_id',
+            'hearing_date', 'hijri_date', 'hearing_time',
+            'notes', 'judge_name', 'judge',
+            'hearing_type', 'hearing_type_display',
+            # New fields
+            'decision', 'decision_display',
+            'next_hearing_date', 'next_hijri_date',
+            'created_at', 'updated_at',
         )
         read_only_fields = ('id', 'created_at', 'updated_at')

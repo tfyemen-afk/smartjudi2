@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../providers/lawsuit_provider.dart';
 import '../models/lawsuit_model.dart';
 import 'lawsuit_detail_screen.dart';
+import 'case_timeline_screen.dart';
 
 /// Archive Screen - شاشة الأرشيف المركزية الشاملة
 class ArchiveScreen extends StatefulWidget {
@@ -25,6 +26,17 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
   String? _selectedCaseStatus;
   String? _selectedArchiveStatus;
   String? _selectedOrdering;
+
+  // Extended filters (Step 9)
+  String? _selectedCourtLevel;
+  String? _selectedFilingDateFrom;
+  String? _selectedFilingDateTo;
+
+  static const _courtLevels = [
+    {'value': 'first_instance', 'label': 'ابتدائي'},
+    {'value': 'appeal', 'label': 'استئناف'},
+    {'value': 'supreme', 'label': 'عليا / تمييز'},
+  ];
 
   static const _caseTypes = [
     {'value': 'دعوى', 'label': 'دعوى'},
@@ -125,6 +137,8 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
     provider.setCaseStatusFilter(_selectedCaseStatus);
     provider.setArchiveStatusFilter(_selectedArchiveStatus);
     provider.setOrdering(_selectedOrdering);
+    provider.setCourtLevelFilter(_selectedCourtLevel);
+    provider.setDateRange(_selectedFilingDateFrom, _selectedFilingDateTo);
     provider.loadLawsuits(refresh: true);
   }
 
@@ -138,12 +152,19 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
         selectedCaseStatus: _selectedCaseStatus,
         selectedArchiveStatus: _selectedArchiveStatus,
         selectedOrdering: _selectedOrdering,
-        onApply: (caseType, caseStatus, archiveStatus, ordering) {
+        selectedCourtLevel: _selectedCourtLevel,
+        selectedFilingDateFrom: _selectedFilingDateFrom,
+        selectedFilingDateTo: _selectedFilingDateTo,
+        onApply: (caseType, caseStatus, archiveStatus, ordering,
+            courtLevel, dateFrom, dateTo) {
           setState(() {
             _selectedCaseType = caseType;
             _selectedCaseStatus = caseStatus;
             _selectedArchiveStatus = archiveStatus;
             _selectedOrdering = ordering;
+            _selectedCourtLevel = courtLevel;
+            _selectedFilingDateFrom = dateFrom;
+            _selectedFilingDateTo = dateTo;
           });
           _applyFilters();
         },
@@ -160,6 +181,9 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
       _selectedCaseStatus = null;
       _selectedArchiveStatus = null;
       _selectedOrdering = null;
+      _selectedCourtLevel = null;
+      _selectedFilingDateFrom = null;
+      _selectedFilingDateTo = null;
       _searchController.clear();
     });
     final provider = Provider.of<LawsuitProvider>(context, listen: false);
@@ -488,6 +512,17 @@ class _ArchiveScreenState extends State<ArchiveScreen> with SingleTickerProvider
           chips.add(_buildChip('الحالة: $label', () {
             setState(() => _selectedCaseStatus = null);
             provider.setCaseStatusFilter(null);
+            provider.loadLawsuits(refresh: true);
+          }));
+        }
+        if (provider.courtLevelFilter != null) {
+          final label = _courtLevels.firstWhere(
+            (c) => c['value'] == provider.courtLevelFilter,
+            orElse: () => {'label': provider.courtLevelFilter!},
+          )['label']!;
+          chips.add(_buildChip('الدرجة: $label', () {
+            setState(() => _selectedCourtLevel = null);
+            provider.setCourtLevelFilter(null);
             provider.loadLawsuits(refresh: true);
           }));
         }
@@ -1033,7 +1068,11 @@ class _FilterBottomSheet extends StatefulWidget {
   final String? selectedCaseStatus;
   final String? selectedArchiveStatus;
   final String? selectedOrdering;
-  final void Function(String?, String?, String?, String?) onApply;
+  final String? selectedCourtLevel;
+  final String? selectedFilingDateFrom;
+  final String? selectedFilingDateTo;
+  final void Function(String?, String?, String?, String?, String?, String?,
+      String?) onApply;
   final VoidCallback onClear;
 
   const _FilterBottomSheet({
@@ -1041,6 +1080,9 @@ class _FilterBottomSheet extends StatefulWidget {
     this.selectedCaseStatus,
     this.selectedArchiveStatus,
     this.selectedOrdering,
+    this.selectedCourtLevel,
+    this.selectedFilingDateFrom,
+    this.selectedFilingDateTo,
     required this.onApply,
     required this.onClear,
   });
@@ -1054,6 +1096,15 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
   String? _caseStatus;
   String? _archiveStatus;
   String? _ordering;
+  String? _courtLevel;
+  String? _filingDateFrom;
+  String? _filingDateTo;
+
+  static const _courtLevels = [
+    {'value': 'first_instance', 'label': 'ابتدائي'},
+    {'value': 'appeal', 'label': 'استئناف'},
+    {'value': 'supreme', 'label': 'عليا / تمييز'},
+  ];
 
   static const _caseTypes = [
     {'value': 'دعوى', 'label': 'دعوى'},
@@ -1098,6 +1149,36 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
     _caseStatus = widget.selectedCaseStatus;
     _archiveStatus = widget.selectedArchiveStatus;
     _ordering = widget.selectedOrdering;
+    _courtLevel = widget.selectedCourtLevel;
+    _filingDateFrom = widget.selectedFilingDateFrom;
+    _filingDateTo = widget.selectedFilingDateTo;
+  }
+
+  Future<void> _pickDate(BuildContext ctx, bool isFrom) async {
+    final initial = isFrom
+        ? (_filingDateFrom != null
+            ? DateTime.parse(_filingDateFrom!)
+            : DateTime.now())
+        : (_filingDateTo != null
+            ? DateTime.parse(_filingDateTo!)
+            : DateTime.now());
+    final picked = await showDatePicker(
+      context: ctx,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: isFrom ? 'من تاريخ' : 'إلى تاريخ',
+    );
+    if (picked != null) {
+      setState(() {
+        final formatted = DateFormat('yyyy-MM-dd').format(picked);
+        if (isFrom) {
+          _filingDateFrom = formatted;
+        } else {
+          _filingDateTo = formatted;
+        }
+      });
+    }
   }
 
   @override
@@ -1195,6 +1276,72 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     )).toList(),
                     onChanged: (v) => setState(() => _ordering = v),
                   ),
+                  const SizedBox(height: 14),
+                  // ── درجة المحكمة ──────────────────────────────────────
+                  _buildDropdown(
+                    label: 'درجة المحكمة',
+                    value: _courtLevel,
+                    items: _courtLevels.map((c) => DropdownMenuItem(
+                      value: c['value'] as String,
+                      child: Text(c['label'] as String),
+                    )).toList(),
+                    onChanged: (v) => setState(() => _courtLevel = v),
+                  ),
+                  const SizedBox(height: 14),
+                  // ── نطاق تاريخ الرفع ───────────────────────────────────
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickDate(context, true),
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            _filingDateFrom ?? 'من تاريخ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _filingDateFrom != null
+                                  ? Colors.black87
+                                  : Colors.grey,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickDate(context, false),
+                          icon: const Icon(Icons.calendar_today, size: 16),
+                          label: Text(
+                            _filingDateTo ?? 'إلى تاريخ',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: _filingDateTo != null
+                                  ? Colors.black87
+                                  : Colors.grey,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                      if (_filingDateFrom != null || _filingDateTo != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 18,
+                              color: Colors.red),
+                          tooltip: 'مسح نطاق التاريخ',
+                          onPressed: () => setState(() {
+                            _filingDateFrom = null;
+                            _filingDateTo = null;
+                          }),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -1209,7 +1356,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     Navigator.pop(context);
-                    widget.onApply(_caseType, _caseStatus, _archiveStatus, _ordering);
+                    widget.onApply(_caseType, _caseStatus, _archiveStatus,
+                        _ordering, _courtLevel, _filingDateFrom, _filingDateTo);
                   },
                   icon: const Icon(Icons.check, size: 20),
                   label: const Text('تطبيق الفلترة', style: TextStyle(fontSize: 16)),

@@ -265,7 +265,104 @@ class Lawsuit(models.Model):
         related_name='lawsuits',
         verbose_name='منشئ الدعوى'
     )
-    
+
+    # ========== Court Level & Department (Step 2) ==========
+
+    COURT_LEVEL_FIRST_INSTANCE = 'first_instance'
+    COURT_LEVEL_APPEAL = 'appeal'
+    COURT_LEVEL_SUPREME = 'supreme'
+
+    COURT_LEVEL_CHOICES = [
+        (COURT_LEVEL_FIRST_INSTANCE, 'ابتدائي'),
+        (COURT_LEVEL_APPEAL, 'استئناف'),
+        (COURT_LEVEL_SUPREME, 'عليا / تمييز'),
+    ]
+
+    # درجة المحكمة
+    court_level = models.CharField(
+        max_length=30,
+        choices=COURT_LEVEL_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='درجة المحكمة'
+    )
+
+    # الشعبة / الدائرة المختصة
+    department = models.CharField(
+        max_length=200,
+        null=True,
+        blank=True,
+        verbose_name='الشعبة / الدائرة'
+    )
+
+    # ========== Lawyer Assignment (Step 2) ==========
+
+    # المحامي المسؤول عن القضية (FK إلى جدول المستخدمين)
+    lawyer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='lawyer_lawsuits',
+        verbose_name='المحامي'
+    )
+
+    # ========== AI Legal Analysis Layer (Step 7) ==========
+
+    # ملخص ذكاء اصطناعي للقضية
+    ai_summary = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='الملخص الذكي'
+    )
+
+    # مراجع المواد القانونية المرتبطة (قائمة JSON)
+    related_laws = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='المواد القانونية المرتبطة'
+    )
+
+    # معرّفات القضايا المشابهة (قائمة JSON)
+    similar_cases = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='القضايا المشابهة'
+    )
+
+    RISK_LOW = 'low'
+    RISK_MEDIUM = 'medium'
+    RISK_HIGH = 'high'
+
+    RISK_LEVEL_CHOICES = [
+        (RISK_LOW, 'منخفض'),
+        (RISK_MEDIUM, 'متوسط'),
+        (RISK_HIGH, 'عالٍ'),
+    ]
+
+    # مستوى المخاطرة القانونية
+    legal_risk_level = models.CharField(
+        max_length=10,
+        choices=RISK_LEVEL_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name='مستوى المخاطرة'
+    )
+
+    # احتمالية النجاح (0.0 - 1.0)
+    success_probability = models.FloatField(
+        null=True,
+        blank=True,
+        verbose_name='احتمالية النجاح'
+    )
+
+    # بيانات وصفية لفهرسة RAG / ChromaDB
+    rag_metadata = models.TextField(
+        null=True,
+        blank=True,
+        verbose_name='بيانات RAG الوصفية'
+    )
+
     # ========== Archive Lifecycle Fields ==========
     
     # Archive status
@@ -356,6 +453,9 @@ class Lawsuit(models.Model):
             models.Index(fields=['archive_status']),
             models.Index(fields=['is_deleted']),
             models.Index(fields=['parent_lawsuit']),
+            models.Index(fields=['court_level']),
+            models.Index(fields=['lawyer']),
+            models.Index(fields=['legal_risk_level']),
         ]
     
     def __str__(self):

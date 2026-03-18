@@ -78,7 +78,22 @@ class Plaintiff(models.Model):
         null=True,
         verbose_name='هاتف الوكيل'
     )
-    
+
+    # رقم الهوية الوطنية
+    id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='رقم الهوية'
+    )
+
+    # role kept on Plaintiff for unified API compatibility
+    role = models.CharField(
+        max_length=20,
+        default='plaintiff',
+        verbose_name='الدور'
+    )
+
     # Timestamps
     created_at = models.DateTimeField(
         auto_now_add=True,
@@ -179,7 +194,22 @@ class Defendant(models.Model):
         null=True,
         verbose_name='هاتف الوكيل'
     )
-    
+
+    # رقم الهوية الوطنية
+    id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name='رقم الهوية'
+    )
+
+    # role kept on Defendant for unified API compatibility
+    role = models.CharField(
+        max_length=20,
+        default='defendant',
+        verbose_name='الدور'
+    )
+
     # Timestamps
     created_at = models.DateTimeField(
         auto_now_add=True,
