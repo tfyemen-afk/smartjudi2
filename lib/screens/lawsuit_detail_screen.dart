@@ -110,6 +110,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         _loadLawsuit();
         _loadParties();
         _loadAttachments();
+        // تحميل الجلسات والأحكام مرة واحدة فقط عند الدخول
+        final provider = Provider.of<LawsuitProvider>(context, listen: false);
+        provider.loadHearings(widget.lawsuitId!);
+        provider.loadJudgments(widget.lawsuitId!);
       });
     } else {
       // Load templates for default case type
@@ -1735,17 +1739,6 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
             ),
             const SizedBox(height: 12),
 
-            // تحميل الجلسات عند أول ظهور
-            Builder(builder: (_) {
-              if (!provider.isLoadingHearings &&
-                  provider.hearings.isEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((__) {
-                  if (mounted) provider.loadHearings(widget.lawsuitId!);
-                });
-              }
-              return const SizedBox.shrink();
-            }),
-
             if (provider.isLoadingHearings)
               const Center(
                   child: Padding(
@@ -2039,16 +2032,6 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               ],
             ),
             const SizedBox(height: 12),
-
-            Builder(builder: (_) {
-              if (!provider.isLoadingJudgments &&
-                  provider.judgments.isEmpty) {
-                WidgetsBinding.instance.addPostFrameCallback((__) {
-                  if (mounted) provider.loadJudgments(widget.lawsuitId!);
-                });
-              }
-              return const SizedBox.shrink();
-            }),
 
             if (provider.isLoadingJudgments)
               const Center(
