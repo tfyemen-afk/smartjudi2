@@ -11,6 +11,7 @@ import '../providers/auth_provider.dart';
 import '../models/lawsuit_model.dart';
 import '../models/party_model.dart';
 import '../config/api_config.dart';
+import 'case_timeline_screen.dart';
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -957,6 +958,31 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEditMode ? 'تعديل الدعوى' : 'إضافة دعوى جديدة'),
+        actions: _isEditMode
+            ? [
+                // زر الجدول الزمني
+                IconButton(
+                  icon: const Icon(Icons.timeline),
+                  tooltip: 'الجدول الزمني للقضية',
+                  onPressed: () {
+                    final provider = Provider.of<LawsuitProvider>(
+                        context,
+                        listen: false);
+                    final lawsuit = provider.selectedLawsuit;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CaseTimelineScreen(
+                          lawsuitId: widget.lawsuitId!,
+                          caseNumber:
+                              lawsuit?.caseNumber ?? '#${widget.lawsuitId}',
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ]
+            : null,
       ),
       body: _isEditMode
           ? Consumer<LawsuitProvider>(
@@ -1577,6 +1603,14 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               const SizedBox(height: 16),
             ],
 
+            // ── قسم التحليل الذكي (يظهر فقط في وضع التعديل) ──────────
+            if (_isEditMode) ...[
+              const Divider(),
+              const SizedBox(height: 16),
+              _buildAIAnalysisSection(),
+              const SizedBox(height: 24),
+            ],
+
             // Save button
             Consumer<LawsuitProvider>(
               builder: (context, provider, child) {
@@ -1608,6 +1642,311 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       ),
     );
   }
+
+  // ── قسم التحليل الذكي ─────────────────────────────────────────────────────
+  Widget _buildAIAnalysisSection() {
+    return Consumer<LawsuitProvider>(
+      builder: (context, provider, _) {
+        final lawsuit = provider.selectedLawsuit;
+        final hasAI = lawsuit?.aiSummary != null &&
+            lawsuit!.aiSummary!.isNotEmpty;
+
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFD4AF37).withOpacity(0.08),
+                const Color(0xFFB8860B).withOpacity(0.04),
+              ],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: const Color(0xFFD4AF37).withOpacity(0.3),
+            ),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // العنوان
+              Row(
+                children: [
+                  // زر تشغيل التحليل
+                  provider.isAnalyzing
+                      ? const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Color(0xFFD4AF37),
+                          ),
+                        )
+                      : ElevatedButton.icon(
+                          onPressed: () async {
+                            final success = await provider
+                                .analyzeCaseWithAI(widget.lawsuitId!);
+                            if (!success && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      provider.analysisError ??
+                                          'فشل التحليل'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.auto_awesome, size: 18),
+                          label: Text(
+                            hasAI ? 'إعادة التحليل' : 'تحليل القضية',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD4AF37),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'التحليل الذكي للقضية 🤖',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF8B6914),
+                      ),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
+                  const Icon(Icons.psychology,
+                      color: Color(0xFFD4AF37), size: 26),
+                ],
+              ),
+
+              // رسالة إذا لم يكن هناك تحليل بعد
+              if (!hasAI && !provider.isAnalyzing) ...[
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'اضغط "تحليل القضية" ليقوم الذكاء الاصطناعي بدراسة القضية واستخراج المواد القانونية المرتبطة وتقدير احتمالية النجاح.',
+                          style: TextStyle(
+                              color: Colors.grey[700], fontSize: 13),
+                          textAlign: TextAlign.right,
+                        ),
+                      ),
+                      const Icon(Icons.info_outline,
+                          color: Color(0xFFD4AF37), size: 20),
+                    ],
+                  ),
+                ),
+              ],
+
+              // نتائج التحليل
+              if (hasAI) ...[
+                const SizedBox(height: 14),
+
+                // الملخص الذكي
+                _buildAIResultCard(
+                  icon: Icons.summarize,
+                  title: 'الملخص الذكي',
+                  child: Text(
+                    lawsuit!.aiSummary!,
+                    style: const TextStyle(fontSize: 13, height: 1.6),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // احتمالية النجاح + مستوى المخاطرة
+                Row(
+                  children: [
+                    // مستوى المخاطرة
+                    Expanded(
+                      child: _buildAIMetricCard(
+                        icon: Icons.shield_outlined,
+                        label: 'مستوى المخاطرة',
+                        value: lawsuit.legalRiskDisplay,
+                        color: _riskColor(lawsuit.legalRiskLevel),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // احتمالية النجاح
+                    Expanded(
+                      child: _buildAIMetricCard(
+                        icon: Icons.trending_up,
+                        label: 'احتمالية النجاح',
+                        value: lawsuit.successProbabilityDisplay,
+                        color: _successColor(lawsuit.successProbability),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // المواد القانونية المرتبطة
+                if (lawsuit.relatedLaws.isNotEmpty)
+                  _buildAIResultCard(
+                    icon: Icons.gavel,
+                    title: 'المواد القانونية المرتبطة',
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: lawsuit.relatedLaws
+                          .map((law) => Chip(
+                                label: Text(law,
+                                    style: const TextStyle(fontSize: 11)),
+                                backgroundColor: const Color(0xFFD4AF37)
+                                    .withOpacity(0.12),
+                                side: BorderSide(
+                                    color: const Color(0xFFD4AF37)
+                                        .withOpacity(0.4)),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+
+                if (lawsuit.relatedLaws.isNotEmpty)
+                  const SizedBox(height: 10),
+
+                // القضايا المشابهة
+                if (lawsuit.similarCases.isNotEmpty)
+                  _buildAIResultCard(
+                    icon: Icons.folder_copy_outlined,
+                    title: 'قضايا مشابهة',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: lawsuit.similarCases
+                          .map((c) => Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 3),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text(c,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF1A1A1A))),
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.link,
+                                        size: 14,
+                                        color: Color(0xFFD4AF37)),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAIResultCard({
+    required IconData icon,
+    required String title,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(10),
+        border:
+            Border.all(color: const Color(0xFFD4AF37).withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: Color(0xFF8B6914))),
+              const SizedBox(width: 6),
+              Icon(icon, size: 16, color: const Color(0xFFD4AF37)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIMetricCard({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 6),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: color)),
+          const SizedBox(height: 4),
+          Text(label,
+              style:
+                  TextStyle(fontSize: 11, color: color.withOpacity(0.8)),
+              textAlign: TextAlign.center),
+        ],
+      ),
+    );
+  }
+
+  Color _riskColor(String? level) {
+    switch (level) {
+      case 'low':
+        return Colors.green;
+      case 'medium':
+        return Colors.orange;
+      case 'high':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _successColor(double? prob) {
+    if (prob == null) return Colors.grey;
+    if (prob >= 0.7) return Colors.green;
+    if (prob >= 0.4) return Colors.orange;
+    return Colors.red;
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   List<Widget> _buildLegalTextFields() {
     if (_templates == null) return [];
