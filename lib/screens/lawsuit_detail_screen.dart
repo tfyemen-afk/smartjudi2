@@ -46,10 +46,14 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
   String? _selectedCaseType;
   String? _selectedCaseStatus;
   String? _selectedGovernorate;
-  int? _selectedGovernorateId; // إضافة ID المحافظة
+  int? _selectedGovernorateId;
   int? _selectedCourtId;
   DateTime? _filingDateGregorian;
   String? _filingDateHijri;
+
+  // حقول جديدة — درجة المحكمة والشعبة
+  String? _selectedCourtLevel;
+  late TextEditingController _departmentController;
   
   // Lists for dropdowns
   List<Map<String, dynamic>> _governorates = [];
@@ -85,6 +89,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     _factsController = TextEditingController();
     _legalReasonsController = TextEditingController();
     _requestsController = TextEditingController();
+    _departmentController = TextEditingController();
     
     // Default case type
     _selectedCaseType = 'دعوى';
@@ -127,6 +132,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     _legalReasonsController.dispose();
     _requestsController.dispose();
     _hijriDateController.dispose();
+    _departmentController.dispose();
     for (var controller in _legalTextControllers.values) {
       controller.dispose();
     }
@@ -385,12 +391,15 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         }
       }
       _selectedCourtId = lawsuit.courtId;
+      // تعبئة حقول درجة المحكمة والشعبة
+      _selectedCourtLevel = lawsuit.courtLevel;
+      _departmentController.text = lawsuit.department ?? '';
       _filingDateGregorian = lawsuit.filingDate;
       if (_filingDateGregorian != null) {
         _filingDateHijri = _convertToHijri(_filingDateGregorian!);
         _hijriDateController.text = _filingDateHijri ?? '';
       }
-      
+
       // Populate rich text fields
       _factsController.text = lawsuit.facts ?? '';
       _legalReasonsController.text = lawsuit.legalReasons ?? '';
@@ -783,6 +792,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       gregorianDate: _filingDateGregorian,
       hijriDate: hijriDate,
       courtId: _selectedCourtId,
+      courtLevel: _selectedCourtLevel,
+      department: _departmentController.text.trim().isEmpty
+          ? null
+          : _departmentController.text.trim(),
     );
 
     if (_isEditMode) {
@@ -1457,7 +1470,37 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               },
             ),
             const SizedBox(height: 16),
-            
+
+            // ── درجة المحكمة ────────────────────────────────────────────────
+            DropdownButtonFormField<String>(
+              value: _selectedCourtLevel,
+              decoration: const InputDecoration(
+                labelText: 'درجة المحكمة',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.account_balance, size: 20),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'first_instance', child: Text('ابتدائي')),
+                DropdownMenuItem(value: 'appeal',         child: Text('استئناف')),
+                DropdownMenuItem(value: 'supreme',        child: Text('عليا / تمييز')),
+              ],
+              onChanged: (v) => setState(() => _selectedCourtLevel = v),
+            ),
+            const SizedBox(height: 16),
+
+            // ── الشعبة / الدائرة ─────────────────────────────────────────────
+            TextFormField(
+              controller: _departmentController,
+              textAlign: TextAlign.right,
+              decoration: const InputDecoration(
+                labelText: 'الشعبة / الدائرة',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.meeting_room_outlined, size: 20),
+                hintText: 'مثال: الشعبة التجارية الأولى',
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Case Number
             TextFormField(
               controller: _caseNumberController,
@@ -1603,6 +1646,22 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               const SizedBox(height: 16),
             ],
 
+            // ── قسم الجلسات (يظهر فقط في وضع التعديل) ─────────────
+            if (_isEditMode) ...[
+              const Divider(),
+              const SizedBox(height: 16),
+              _buildHearingsSection(),
+              const SizedBox(height: 24),
+            ],
+
+            // ── قسم الأحكام (يظهر فقط في وضع التعديل) ──────────────
+            if (_isEditMode) ...[
+              const Divider(),
+              const SizedBox(height: 16),
+              _buildJudgmentsSection(),
+              const SizedBox(height: 24),
+            ],
+
             // ── قسم التحليل الذكي (يظهر فقط في وضع التعديل) ──────────
             if (_isEditMode) ...[
               const Divider(),
@@ -1636,6 +1695,667 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                         ),
                 );
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // قسم الجلسات
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildHearingsSection() {
+    return Consumer<LawsuitProvider>(
+      builder: (context, provider, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            // عنوان القسم
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _showHearingDialog(provider),
+                  icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                  label: const Text('إضافة جلسة',
+                      style: TextStyle(color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                  ),
+                ),
+                const Spacer(),
+                const Text('الجلسات',
+                    style: TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                const Icon(Icons.event, color: Colors.blue),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // تحميل الجلسات عند أول ظهور
+            Builder(builder: (_) {
+              if (!provider.isLoadingHearings &&
+                  provider.hearings.isEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((__) {
+                  if (mounted) provider.loadHearings(widget.lawsuitId!);
+                });
+              }
+              return const SizedBox.shrink();
+            }),
+
+            if (provider.isLoadingHearings)
+              const Center(
+                  child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(color: Colors.blue),
+              ))
+            else if (provider.hearings.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: Colors.blue.withOpacity(0.15)),
+                ),
+                child: const Center(
+                  child: Text('لا توجد جلسات مسجّلة بعد',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: provider.hearings.length,
+                itemBuilder: (_, i) {
+                  final h = provider.hearings[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit,
+                                size: 18, color: Colors.blue),
+                            onPressed: () =>
+                                _showHearingDialog(provider, hearing: h),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete,
+                                size: 18, color: Colors.red),
+                            onPressed: () async {
+                              final ok = await provider.deleteHearing(
+                                  h.id!, widget.lawsuitId!);
+                              if (!ok && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(provider.errorMessage ??
+                                          'خطأ في الحذف'),
+                                      backgroundColor: Colors.red),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      title: Text(
+                        '${h.hearingTypeDisplay} — ${DateFormat('yyyy/MM/dd').format(h.hearingDate)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('القرار: ${h.decisionDisplay}',
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      h.isResolved ? Colors.green : Colors.orange)),
+                          if (h.nextHearingDate != null)
+                            Text(
+                                'الجلسة القادمة: ${DateFormat('yyyy/MM/dd').format(h.nextHearingDate!)}',
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.grey)),
+                          if (h.notes != null && h.notes!.isNotEmpty)
+                            Text(h.notes!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showHearingDialog(LawsuitProvider provider,
+      {dynamic hearing}) async {
+    final formKey = GlobalKey<FormState>();
+    DateTime selectedDate =
+        hearing?.hearingDate ?? DateTime.now();
+    DateTime? nextDate = hearing?.nextHearingDate;
+    String selectedType = hearing?.hearingType ?? 'pleading';
+    String selectedDecision = hearing?.decision ?? 'adjourned';
+    final notesController =
+        TextEditingController(text: hearing?.notes ?? '');
+    final judgeController =
+        TextEditingController(text: hearing?.judgeName ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: Text(hearing == null ? 'إضافة جلسة' : 'تعديل الجلسة'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // تاريخ الجلسة
+                  ListTile(
+                    trailing: const Icon(Icons.calendar_today,
+                        color: Colors.blue, size: 20),
+                    title: Text(
+                        'تاريخ الجلسة: ${DateFormat('yyyy/MM/dd').format(selectedDate)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 13)),
+                    onTap: () async {
+                      final p = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100));
+                      if (p != null) setS(() => selectedDate = p);
+                    },
+                  ),
+                  // نوع الجلسة
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    decoration:
+                        const InputDecoration(labelText: 'نوع الجلسة'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'pleading', child: Text('مرافعة')),
+                      DropdownMenuItem(
+                          value: 'witness', child: Text('سماع شهود')),
+                      DropdownMenuItem(
+                          value: 'expert', child: Text('تقرير خبير')),
+                      DropdownMenuItem(
+                          value: 'initial', child: Text('جلسة أولى')),
+                      DropdownMenuItem(
+                          value: 'judgment', child: Text('جلسة حكم')),
+                      DropdownMenuItem(
+                          value: 'other', child: Text('أخرى')),
+                    ],
+                    onChanged: (v) => setS(() => selectedType = v!),
+                  ),
+                  // القرار
+                  DropdownButtonFormField<String>(
+                    value: selectedDecision,
+                    decoration:
+                        const InputDecoration(labelText: 'قرار الجلسة'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'adjourned', child: Text('مؤجّلة')),
+                      DropdownMenuItem(
+                          value: 'judgment', child: Text('صدر حكم')),
+                      DropdownMenuItem(
+                          value: 'postponed', child: Text('مرجأة')),
+                      DropdownMenuItem(
+                          value: 'continued', child: Text('تواصل')),
+                      DropdownMenuItem(
+                          value: 'other', child: Text('أخرى')),
+                    ],
+                    onChanged: (v) => setS(() => selectedDecision = v!),
+                  ),
+                  // الجلسة القادمة
+                  ListTile(
+                    trailing: const Icon(Icons.event_available,
+                        color: Colors.green, size: 20),
+                    title: Text(
+                        nextDate != null
+                            ? 'القادمة: ${DateFormat('yyyy/MM/dd').format(nextDate!)}'
+                            : 'تاريخ الجلسة القادمة (اختياري)',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: nextDate != null
+                                ? Colors.black
+                                : Colors.grey)),
+                    onTap: () async {
+                      final p = await showDatePicker(
+                          context: ctx,
+                          initialDate: nextDate ?? DateTime.now(),
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100));
+                      if (p != null) setS(() => nextDate = p);
+                    },
+                  ),
+                  // اسم القاضي
+                  TextFormField(
+                    controller: judgeController,
+                    decoration:
+                        const InputDecoration(labelText: 'اسم القاضي'),
+                    textAlign: TextAlign.right,
+                  ),
+                  // ملاحظات
+                  TextFormField(
+                    controller: notesController,
+                    decoration:
+                        const InputDecoration(labelText: 'ملاحظات الجلسة'),
+                    textAlign: TextAlign.right,
+                    maxLines: 3,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final data = {
+                  'lawsuit': widget.lawsuitId,
+                  'hearing_date': DateFormat('yyyy-MM-dd').format(selectedDate),
+                  'hearing_type': selectedType,
+                  'decision': selectedDecision,
+                  if (nextDate != null)
+                    'next_hearing_date':
+                        DateFormat('yyyy-MM-dd').format(nextDate!),
+                  if (judgeController.text.isNotEmpty)
+                    'judge_name': judgeController.text,
+                  if (notesController.text.isNotEmpty)
+                    'notes': notesController.text,
+                };
+                bool ok;
+                if (hearing == null) {
+                  ok = await provider.createHearing(data);
+                } else {
+                  ok = await provider.updateHearing(
+                      hearing.id!, data, widget.lawsuitId!);
+                }
+                if (!ok && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        provider.errorMessage ?? 'خطأ في حفظ الجلسة'),
+                    backgroundColor: Colors.red,
+                  ));
+                }
+                notesController.dispose();
+                judgeController.dispose();
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // قسم الأحكام
+  // ══════════════════════════════════════════════════════════════════════════
+  Widget _buildJudgmentsSection() {
+    return Consumer<LawsuitProvider>(
+      builder: (context, provider, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () => _showJudgmentDialog(provider),
+                  icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                  label: const Text('إضافة حكم',
+                      style: TextStyle(color: Colors.white, fontSize: 13)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE91E63),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                  ),
+                ),
+                const Spacer(),
+                const Text('الأحكام',
+                    style: TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.bold)),
+                const SizedBox(width: 8),
+                const Icon(Icons.balance, color: Color(0xFFE91E63)),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Builder(builder: (_) {
+              if (!provider.isLoadingJudgments &&
+                  provider.judgments.isEmpty) {
+                WidgetsBinding.instance.addPostFrameCallback((__) {
+                  if (mounted) provider.loadJudgments(widget.lawsuitId!);
+                });
+              }
+              return const SizedBox.shrink();
+            }),
+
+            if (provider.isLoadingJudgments)
+              const Center(
+                  child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(
+                    color: Color(0xFFE91E63)),
+              ))
+            else if (provider.judgments.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE91E63).withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: const Color(0xFFE91E63).withOpacity(0.15)),
+                ),
+                child: const Center(
+                  child: Text('لا توجد أحكام مسجّلة بعد',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: provider.judgments.length,
+                itemBuilder: (_, i) {
+                  final j = provider.judgments[i];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                          color: j.isFinal
+                              ? Colors.green.withOpacity(0.4)
+                              : Colors.grey.withOpacity(0.2)),
+                    ),
+                    child: ListTile(
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit,
+                                size: 18, color: Colors.blue),
+                            onPressed: () =>
+                                _showJudgmentDialog(provider, judgment: j),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete,
+                                size: 18, color: Colors.red),
+                            onPressed: () async {
+                              final ok = await provider.deleteJudgment(
+                                  j.id!, widget.lawsuitId!);
+                              if (!ok && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(provider.errorMessage ??
+                                          'خطأ في الحذف'),
+                                      backgroundColor: Colors.red),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (j.isFinal)
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text('بات',
+                                  style: TextStyle(
+                                      fontSize: 10, color: Colors.green)),
+                            ),
+                          Text(
+                            '${j.courtLevelDisplay} — ${DateFormat('yyyy/MM/dd').format(j.judgmentDate)}',
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(j.judgmentTypeDisplay,
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFFE91E63))),
+                          Text(j.summary,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showJudgmentDialog(LawsuitProvider provider,
+      {dynamic judgment}) async {
+    final formKey = GlobalKey<FormState>();
+    DateTime selectedDate = judgment?.judgmentDate ?? DateTime.now();
+    String selectedCourtLevel = judgment?.courtLevel ?? 'first_instance';
+    String selectedType = judgment?.judgmentType ?? 'other';
+    String selectedStatus = judgment?.status ?? 'issued';
+    final summaryController =
+        TextEditingController(text: judgment?.summary ?? '');
+    final fullTextController =
+        TextEditingController(text: judgment?.fullText ?? '');
+    final docRefController =
+        TextEditingController(text: judgment?.documentReference ?? '');
+    final judgeController =
+        TextEditingController(text: judgment?.judgeName ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title:
+              Text(judgment == null ? 'إضافة حكم' : 'تعديل الحكم'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // تاريخ الحكم
+                  ListTile(
+                    trailing: const Icon(Icons.calendar_today,
+                        color: Color(0xFFE91E63), size: 20),
+                    title: Text(
+                        'تاريخ الحكم: ${DateFormat('yyyy/MM/dd').format(selectedDate)}',
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(fontSize: 13)),
+                    onTap: () async {
+                      final p = await showDatePicker(
+                          context: ctx,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100));
+                      if (p != null) setS(() => selectedDate = p);
+                    },
+                  ),
+                  // درجة المحكمة
+                  DropdownButtonFormField<String>(
+                    value: selectedCourtLevel,
+                    decoration:
+                        const InputDecoration(labelText: 'درجة المحكمة'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'first_instance',
+                          child: Text('ابتدائي')),
+                      DropdownMenuItem(
+                          value: 'appeal', child: Text('استئناف')),
+                      DropdownMenuItem(
+                          value: 'supreme',
+                          child: Text('عليا / تمييز')),
+                    ],
+                    onChanged: (v) =>
+                        setS(() => selectedCourtLevel = v!),
+                  ),
+                  // نوع الحكم
+                  DropdownButtonFormField<String>(
+                    value: selectedType,
+                    decoration:
+                        const InputDecoration(labelText: 'نوع الحكم'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'civil_for',
+                          child: Text('قضي للمدعي')),
+                      DropdownMenuItem(
+                          value: 'civil_against',
+                          child: Text('قضي على المدعى عليه')),
+                      DropdownMenuItem(
+                          value: 'dismissed',
+                          child: Text('رُفضت الدعوى')),
+                      DropdownMenuItem(
+                          value: 'conviction', child: Text('إدانة')),
+                      DropdownMenuItem(
+                          value: 'acquittal', child: Text('تبرئة')),
+                      DropdownMenuItem(
+                          value: 'partial', child: Text('حكم جزئي')),
+                      DropdownMenuItem(
+                          value: 'other', child: Text('أخرى')),
+                    ],
+                    onChanged: (v) => setS(() => selectedType = v!),
+                  ),
+                  // حالة الحكم
+                  DropdownButtonFormField<String>(
+                    value: selectedStatus,
+                    decoration:
+                        const InputDecoration(labelText: 'حالة الحكم'),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'draft', child: Text('مسودة')),
+                      DropdownMenuItem(
+                          value: 'issued', child: Text('صادر')),
+                      DropdownMenuItem(
+                          value: 'appealed', child: Text('مطعون فيه')),
+                      DropdownMenuItem(
+                          value: 'final', child: Text('بات / نهائي')),
+                    ],
+                    onChanged: (v) => setS(() => selectedStatus = v!),
+                  ),
+                  // ملخص الحكم
+                  TextFormField(
+                    controller: summaryController,
+                    decoration:
+                        const InputDecoration(labelText: 'ملخص الحكم *'),
+                    textAlign: TextAlign.right,
+                    maxLines: 3,
+                    validator: (v) =>
+                        v?.isEmpty ?? true ? 'مطلوب' : null,
+                  ),
+                  // اسم القاضي
+                  TextFormField(
+                    controller: judgeController,
+                    decoration:
+                        const InputDecoration(labelText: 'اسم القاضي'),
+                    textAlign: TextAlign.right,
+                  ),
+                  // مرجع الوثيقة
+                  TextFormField(
+                    controller: docRefController,
+                    decoration: const InputDecoration(
+                        labelText: 'مرجع الوثيقة / رقم الملف'),
+                    textAlign: TextAlign.right,
+                  ),
+                  // النص الكامل
+                  TextFormField(
+                    controller: fullTextController,
+                    decoration: const InputDecoration(
+                        labelText: 'نص الحكم الكامل (اختياري)'),
+                    textAlign: TextAlign.right,
+                    maxLines: 5,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFE91E63),
+                  foregroundColor: Colors.white),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(ctx);
+                final data = {
+                  'lawsuit': widget.lawsuitId,
+                  'court_level': selectedCourtLevel,
+                  'judgment_date':
+                      DateFormat('yyyy-MM-dd').format(selectedDate),
+                  'judgment_type': selectedType,
+                  'status': selectedStatus,
+                  'summary': summaryController.text,
+                  'judgment_text': fullTextController.text.isNotEmpty
+                      ? fullTextController.text
+                      : summaryController.text,
+                  if (judgeController.text.isNotEmpty)
+                    'judge_name': judgeController.text,
+                  if (docRefController.text.isNotEmpty)
+                    'document_reference': docRefController.text,
+                  // judgment_number مطلوب في الـ backend
+                  'judgment_number':
+                      'J-${widget.lawsuitId}-${DateTime.now().millisecondsSinceEpoch}',
+                  'court_name': '',
+                };
+                bool ok;
+                if (judgment == null) {
+                  ok = await provider.createJudgment(data);
+                } else {
+                  ok = await provider.updateJudgment(
+                      judgment.id!, data, widget.lawsuitId!);
+                }
+                if (!ok && mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        provider.errorMessage ?? 'خطأ في حفظ الحكم'),
+                    backgroundColor: Colors.red,
+                  ));
+                }
+                summaryController.dispose();
+                fullTextController.dispose();
+                docRefController.dispose();
+                judgeController.dispose();
+              },
+              child: const Text('حفظ'),
             ),
           ],
         ),
@@ -2474,15 +3194,17 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     final phoneController = TextEditingController(text: party?.phone ?? '');
     final attorneyNameController = TextEditingController(text: party?.attorneyName ?? '');
     final attorneyPhoneController = TextEditingController(text: party?.attorneyPhone ?? '');
+    final idNumberController = TextEditingController(text: party?.idNumber ?? '');
     String? selectedGender = party?.gender ?? 'male';
+    String? selectedRole = party?.role ?? (isPlaintiff ? 'plaintiff' : 'defendant');
 
     bool? shouldSave = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: Text(party == null 
-              ? (isPlaintiff ? 'إضافة مدعي' : 'إضافة مدعى عليه')
-              : (isPlaintiff ? 'تعديل مدعي' : 'تعديل مدعى عليه')),
+          title: Text(party == null
+              ? 'إضافة طرف في القضية'
+              : 'تعديل بيانات الطرف'),
           content: SingleChildScrollView(
             child: Form(
               key: formKey,
@@ -2550,6 +3272,35 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                   decoration: const InputDecoration(labelText: 'هاتف الوكيل'),
                   keyboardType: TextInputType.phone,
                 ),
+                const SizedBox(height: 4),
+                const Divider(),
+                // ── حقل رقم الهوية ──────────────────────────────────
+                TextFormField(
+                  controller: idNumberController,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم الهوية الوطنية',
+                    prefixIcon: Icon(Icons.badge_outlined, size: 18),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 4),
+                // ── دور الطرف ────────────────────────────────────────
+                DropdownButtonFormField<String>(
+                  value: selectedRole,
+                  decoration: const InputDecoration(
+                    labelText: 'دور الطرف في القضية',
+                    prefixIcon: Icon(Icons.person_pin_outlined, size: 18),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'plaintiff',   child: Text('مدعي')),
+                    DropdownMenuItem(value: 'defendant',   child: Text('مدعى عليه')),
+                    DropdownMenuItem(value: 'witness',     child: Text('شاهد')),
+                    DropdownMenuItem(value: 'expert',      child: Text('خبير')),
+                    DropdownMenuItem(value: 'legal_agent', child: Text('وكيل قانوني')),
+                    DropdownMenuItem(value: 'notary',      child: Text('أمين شرعي')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedRole = v),
+                ),
               ],
             ),
           ),
@@ -2581,11 +3332,11 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     final partyPhone = phoneController.text.isEmpty ? null : phoneController.text;
     final partyAttorneyName = attorneyNameController.text.isEmpty ? null : attorneyNameController.text;
     final partyAttorneyPhone = attorneyPhoneController.text.isEmpty ? null : attorneyPhoneController.text;
-    
+    final partyIdNumber = idNumberController.text.isEmpty ? null : idNumberController.text;
+    final partyRole = selectedRole ?? (isPlaintiff ? 'plaintiff' : 'defendant');
+
     // Dispose controllers after dialog is fully closed
-    // Use post-frame callback to ensure dialog widgets are completely disposed before disposing controllers
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Wait one more frame to ensure all dialog widgets are fully disposed
       WidgetsBinding.instance.addPostFrameCallback((_) {
         nameController.dispose();
         nationalityController.dispose();
@@ -2594,9 +3345,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         phoneController.dispose();
         attorneyNameController.dispose();
         attorneyPhoneController.dispose();
+        idNumberController.dispose();
       });
     });
-    
+
     // Save party if dialog returned true and widget is still mounted
     if (shouldSave == true && mounted) {
       await _saveParty(
@@ -2610,6 +3362,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         phone: partyPhone,
         attorneyName: partyAttorneyName,
         attorneyPhone: partyAttorneyPhone,
+        idNumber: partyIdNumber,
+        role: partyRole,
       );
     }
   }
@@ -2625,13 +3379,15 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     String? phone,
     String? attorneyName,
     String? attorneyPhone,
+    String? idNumber,
+    String? role,
   }) async {
     if (!mounted) return;
-    
+
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final lawsuitId = widget.lawsuitId!;
-      
+
       final partyData = {
         'lawsuit_id': lawsuitId,
         'name': name,
@@ -2642,6 +3398,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
         if (phone != null && phone.isNotEmpty) 'phone': phone,
         if (attorneyName != null && attorneyName.isNotEmpty) 'attorney_name': attorneyName,
         if (attorneyPhone != null && attorneyPhone.isNotEmpty) 'attorney_phone': attorneyPhone,
+        if (idNumber != null && idNumber.isNotEmpty) 'id_number': idNumber,
+        if (role != null) 'role': role,
       };
 
       developer.log('Saving party: $partyData', name: 'LawsuitDetailScreen');

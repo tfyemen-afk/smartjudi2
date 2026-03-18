@@ -862,6 +862,8 @@ class _ArchiveLawsuitCard extends StatelessWidget {
                     _CountBadge(icon: Icons.attach_file, count: lawsuit.attachmentsCount),
                   if (lawsuit.hearingsCount > 0)
                     _CountBadge(icon: Icons.event, count: lawsuit.hearingsCount),
+                  if (lawsuit.judgmentsCount > 0)
+                    _CountBadge(icon: Icons.balance, count: lawsuit.judgmentsCount, color: const Color(0xFFE91E63)),
                   if (lawsuit.plaintiffsCount > 0 || lawsuit.defendantsCount > 0)
                     _CountBadge(
                       icon: Icons.people,
@@ -1044,18 +1046,20 @@ class _StatusBadge extends StatelessWidget {
 class _CountBadge extends StatelessWidget {
   final IconData icon;
   final int count;
-  const _CountBadge({required this.icon, required this.count});
+  final Color? color;
+  const _CountBadge({required this.icon, required this.count, this.color});
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? Colors.grey[600]!;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('$count', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          Text('$count', style: TextStyle(fontSize: 11, color: c)),
           const SizedBox(width: 2),
-          Icon(icon, size: 14, color: Colors.grey[500]),
+          Icon(icon, size: 14, color: c),
         ],
       ),
     );
