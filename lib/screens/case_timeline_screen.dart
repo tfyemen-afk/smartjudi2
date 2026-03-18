@@ -40,66 +40,63 @@ class _CaseTimelineScreenState extends State<CaseTimelineScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('الجدول الزمني - ${widget.caseNumber}'),
-          backgroundColor: const Color(0xFFE91E63),
-          foregroundColor: Colors.white,
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'تحديث',
-              onPressed: () =>
-                  Provider.of<LawsuitProvider>(context, listen: false)
-                      .loadCaseTimeline(widget.lawsuitId),
-            ),
-          ],
-        ),
-        body: Consumer<LawsuitProvider>(
-          builder: (context, provider, _) {
-            if (provider.isLoadingTimeline) {
-              return const Center(
-                child: CircularProgressIndicator(color: Color(0xFFE91E63)),
-              );
-            }
-
-            if (provider.timeline.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.timeline, size: 64, color: Colors.grey[300]),
-                    const SizedBox(height: 16),
-                    Text(
-                      'لا توجد أحداث مسجّلة بعد',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'سيظهر هنا كل حدث بعد رفع الدعوى',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-              itemCount: provider.timeline.length,
-              itemBuilder: (context, index) {
-                final event = provider.timeline[index];
-                final isLast = index == provider.timeline.length - 1;
-                return _TimelineEventTile(
-                  event: event,
-                  isLast: isLast,
-                );
-              },
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('الجدول الزمني - ${widget.caseNumber}'),
+        backgroundColor: const Color(0xFFE91E63),
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'تحديث',
+            onPressed: () =>
+                Provider.of<LawsuitProvider>(context, listen: false)
+                    .loadCaseTimeline(widget.lawsuitId),
+          ),
+        ],
+      ),
+      body: Consumer<LawsuitProvider>(
+        builder: (context, provider, _) {
+          if (provider.isLoadingTimeline) {
+            return const Center(
+              child: CircularProgressIndicator(color: Color(0xFFE91E63)),
             );
-          },
-        ),
+          }
+
+          if (provider.timeline.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.timeline, size: 64, color: Colors.grey[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'لا توجد أحداث مسجّلة بعد',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'سيظهر هنا كل حدث بعد رفع الدعوى',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+            itemCount: provider.timeline.length,
+            itemBuilder: (context, index) {
+              final event = provider.timeline[index];
+              final isLast = index == provider.timeline.length - 1;
+              return _TimelineEventTile(
+                event: event,
+                isLast: isLast,
+              );
+            },
+          );
+        },
       ),
     );
   }
