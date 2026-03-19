@@ -105,22 +105,22 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       _attachmentsData.add({});
     }
 
-    if (_isEditMode) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    // تنظيف `LawsuitProvider` قبل الاستخدام وتجنب الاحتفاظ ببيانات قديمة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<LawsuitProvider>(context, listen: false);
+      if (_isEditMode) {
+        // تأكد أن الدعوى المحددة حاليًا هي المطلوبة، أو نظّفها
+        if (provider.selectedLawsuit?.id != widget.lawsuitId) {
+          provider.clearSelectedLawsuit();
+        }
         _loadLawsuit();
         _loadParties();
         _loadAttachments();
-        // الجلسات والأحكام تُحمَّل بعد اكتمال تحميل الدعوى (انظر _loadLawsuit)
-      });
-    } else {
-      // Load templates for default case type
-      _loadTemplates(_selectedCaseType!);
-    }
-    
-    // Load governorates only (courts will be loaded when governorate is selected)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+      } else {
+        provider.clearSelectedLawsuit();
+        _loadTemplates(_selectedCaseType!);
+      }
       _loadGovernorates();
-      // في وضع التعديل، سيتم تحميل المحاكم من _loadLawsuit
     });
   }
 
@@ -423,8 +423,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       // تحميل الجلسات والأحكام بعد اكتمال تحميل الدعوى
       // (نؤجّل حتى هنا لتفادي تزامن notifyListeners مع تحميل الدعوى)
       if (mounted) {
-        provider.loadHearings(widget.lawsuitId!);
-        provider.loadJudgments(widget.lawsuitId!);
+        await provider.loadHearings(widget.lawsuitId!);
+        await provider.loadJudgments(widget.lawsuitId!);
       }
     }
   }
