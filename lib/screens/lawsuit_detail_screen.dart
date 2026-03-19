@@ -2807,7 +2807,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                     ...(_isLoadingParties && plaintiffsToShow.isEmpty
                         ? [const Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: SizedBox(
+                              width: 36, height: 36,
+                              child: CircularProgressIndicator(),
+                            ),
                           )]
                         : plaintiffsToShow.isEmpty
                             ? [const Padding(
@@ -2892,7 +2895,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                     ...(_isLoadingParties && defendantsToShow.isEmpty
                         ? [const Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: SizedBox(
+                              width: 36, height: 36,
+                              child: CircularProgressIndicator(),
+                            ),
                           )]
                         : defendantsToShow.isEmpty
                             ? [const Padding(
@@ -3669,7 +3675,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                     ...(_isLoadingAttachments && attachmentsToShow.isEmpty
                         ? [const Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: SizedBox(
+                              width: 36, height: 36,
+                              child: CircularProgressIndicator(),
+                            ),
                           )]
                         : attachmentsToShow.isEmpty
                             ? [const Padding(
