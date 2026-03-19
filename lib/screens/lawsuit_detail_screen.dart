@@ -80,6 +80,51 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
   
   bool get _isEditMode => widget.lawsuitId != null;
 
+  static const Set<String> _courtLevelValues = {
+    'first_instance',
+    'appeal',
+    'supreme',
+  };
+
+  String? _normalizeCourtLevel(String? raw) {
+    if (raw == null) return null;
+    final value = raw.trim();
+    if (value.isEmpty) return null;
+    if (_courtLevelValues.contains(value)) return value;
+
+    switch (value) {
+      case 'ابتدائي':
+        return 'first_instance';
+      case 'استئناف':
+        return 'appeal';
+      case 'عليا':
+      case 'تمييز':
+      case 'عليا / تمييز':
+        return 'supreme';
+      default:
+        return null;
+    }
+  }
+
+  String? _safeStringValue(String? value, Set<String> allowedValues) {
+    if (value == null) return null;
+    return allowedValues.contains(value) ? value : null;
+  }
+
+  String? _safeGovernorateValue() {
+    final current = _selectedGovernorate;
+    if (current == null) return null;
+    final exists = _governorates.any((g) => g['name'] == current);
+    return exists ? current : null;
+  }
+
+  int? _safeCourtValue() {
+    final current = _selectedCourtId;
+    if (current == null) return null;
+    final exists = _courts.any((c) => c['id'] == current);
+    return exists ? current : null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -400,7 +445,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       }
       _selectedCourtId = lawsuit.courtId;
       // تعبئة حقول درجة المحكمة والشعبة
-      _selectedCourtLevel = lawsuit.courtLevel;
+      _selectedCourtLevel = _normalizeCourtLevel(lawsuit.courtLevel);
       _departmentController.text = lawsuit.department ?? '';
       _filingDateGregorian = lawsuit.filingDate;
       if (_filingDateGregorian != null) {
@@ -1013,73 +1058,73 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               ]
             : null,
       ),
-      body: Stack(
-        children: [
-          // الفورم دائماً موجود في الخلفية لتفادي أخطاء إعادة البناء وتدمير الـ State
-          _buildForm(),
-          
-          // طبقة التحميل أو الخطأ تظهر فوق الفورم في وضع التعديل
-          if (_isEditMode)
-            Selector<LawsuitProvider, (bool, bool)>(
+      body: _isEditMode
+          ? Selector<LawsuitProvider, (bool, bool)>(
               selector: (_, p) => (p.isLoading, p.selectedLawsuit != null),
               builder: (context, data, _) {
                 final isLoading = data.$1;
                 final hasLawsuit = data.$2;
-                
+
                 if (isLoading && !hasLawsuit) {
-                  return Container(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: const Center(
-                      child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
-                    ),
+                  return const Center(
+                    child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
                   );
                 }
-                
+
                 if (!isLoading && !hasLawsuit) {
-                  // فشل التحميل — زر إعادة المحاولة
-                  return Container(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
-                          const SizedBox(height: 16),
-                          const Text('تعذّر تحميل بيانات الدعوى', style: TextStyle(color: Colors.grey)),
-                          const SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                _loadLawsuit();
-                                _loadParties();
-                                _loadAttachments();
-                                _loadGovernorates();
-                              });
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('إعادة المحاولة'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFD4AF37),
-                              foregroundColor: Colors.white,
-                            ),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'تعذّر تحميل بيانات الدعوى',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              _loadLawsuit();
+                              _loadParties();
+                              _loadAttachments();
+                              _loadGovernorates();
+                            });
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFD4AF37),
+                            foregroundColor: Colors.white,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   );
                 }
-                
-                // إذا تم التحميل بنجاح، نخفي طبقة التغطية
-                return const SizedBox.shrink();
+
+                return _buildForm();
               },
-            ),
-        ],
-      ),
+            )
+          : _buildForm(),
     );
   }
 
   Widget _buildForm() {
     final screenWidth = MediaQuery.of(context).size.width;
+    const caseTypeValues = {
+      'امر_اداء',
+      'دعوى',
+      'رد_على_دعوى',
+      'استئناف',
+      'طعن',
+    };
+    final selectedCaseType = _safeStringValue(_selectedCaseType, caseTypeValues);
+    final selectedGovernorate = _safeGovernorateValue();
+    final selectedCourtId = _safeCourtValue();
+    final selectedCourtLevel = _safeStringValue(_selectedCourtLevel, _courtLevelValues);
+
     return SingleChildScrollView(
       padding: EdgeInsets.symmetric(
         horizontal: screenWidth > 600 ? 24.0 : 12.0,
@@ -1233,7 +1278,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
             
             // Case Type
             DropdownButtonFormField<String>(
-              value: _selectedCaseType,
+              value: selectedCaseType,
               decoration: const InputDecoration(
                 labelText: 'نوع الدعوى',
                 border: OutlineInputBorder(),
@@ -1271,7 +1316,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                             : _governorates.isEmpty
                                 ? const Text('لا توجد محافظات متاحة', style: TextStyle(color: Colors.grey))
                                 : DropdownButtonFormField<String>(
-                                value: _selectedGovernorate,
+                                value: selectedGovernorate,
                                 isExpanded: true, // مهم: يضمن استخدام المساحة الكاملة
                                 decoration: InputDecoration(
                                   labelText: 'المحافظة',
@@ -1342,7 +1387,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                                 : _courts.isEmpty
                                     ? const Text('لا توجد محاكم متاحة', style: TextStyle(color: Colors.grey))
                                     : DropdownButtonFormField<int>(
-                                value: _selectedCourtId,
+                                value: selectedCourtId,
                                 isExpanded: true, // مهم: يضمن استخدام المساحة الكاملة
                                 decoration: InputDecoration(
                                   labelText: 'المحكمة *',
@@ -1416,7 +1461,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                                   ],
                                 )
                               : DropdownButtonFormField<String>(
-                              value: _selectedGovernorate,
+                              value: selectedGovernorate,
                               isExpanded: true, // مهم: يضمن استخدام المساحة الكاملة
                               decoration: InputDecoration(
                                 labelText: 'المحافظة',
@@ -1484,7 +1529,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                               : _courts.isEmpty
                                   ? const Text('لا توجد محاكم متاحة', style: TextStyle(color: Colors.grey))
                                   : DropdownButtonFormField<int>(
-                              value: _selectedCourtId,
+                              value: selectedCourtId,
                               isExpanded: true,
                               decoration: InputDecoration(
                                 labelText: 'المحكمة *',
@@ -1541,7 +1586,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
 
             // ── درجة المحكمة ────────────────────────────────────────────────
             DropdownButtonFormField<String>(
-              value: _selectedCourtLevel,
+              value: selectedCourtLevel,
               decoration: const InputDecoration(
                 labelText: 'درجة المحكمة',
                 border: OutlineInputBorder(),
@@ -1791,6 +1836,9 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                     backgroundColor: Colors.blue,
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
+                    minimumSize: const Size(0, 40),
+                    maximumSize: const Size(180, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const Spacer(),
@@ -2085,6 +2133,9 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                     backgroundColor: const Color(0xFFE91E63),
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 8),
+                    minimumSize: const Size(0, 40),
+                    maximumSize: const Size(180, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const Spacer(),
@@ -2441,43 +2492,49 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               Row(
                 children: [
                   // زر تشغيل التحليل
-                  provider.isAnalyzing
-                      ? const SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFFD4AF37),
+                  SizedBox(
+                    width: 150,
+                    child: provider.isAnalyzing
+                        ? const Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Color(0xFFD4AF37),
+                              ),
+                            ),
+                          )
+                        : ElevatedButton.icon(
+                            onPressed: () async {
+                              final success = await provider
+                                  .analyzeCaseWithAI(widget.lawsuitId!);
+                              if (!success && mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        provider.analysisError ??
+                                            'فشل التحليل'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.auto_awesome, size: 18),
+                            label: Text(
+                              hasAI ? 'إعادة التحليل' : 'تحليل القضية',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
                           ),
-                        )
-                      : ElevatedButton.icon(
-                          onPressed: () async {
-                            final success = await provider
-                                .analyzeCaseWithAI(widget.lawsuitId!);
-                            if (!success && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                      provider.analysisError ??
-                                          'فشل التحليل'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.auto_awesome, size: 18),
-                          label: Text(
-                            hasAI ? 'إعادة التحليل' : 'تحليل القضية',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD4AF37),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
-                          ),
-                        ),
+                  ),
                   const SizedBox(width: 10),
                   const Expanded(
                     child: Text(
@@ -2794,10 +2851,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: MediaQuery.of(context).size.width - 32,
-              ),
+            child: SizedBox(
+              width: 800, // تحديد عرض ثابت لمنع التمدد اللانهائي للـ Center/ElevatedButton
               child: Column(
                 children: [
                   // Table Header
@@ -2882,10 +2937,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: MediaQuery.of(context).size.width - 32,
-              ),
+            child: SizedBox(
+              width: 800, // تحديد عرض ثابت
               child: Column(
                 children: [
                   // Table Header
@@ -3664,10 +3717,8 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
           clipBehavior: Clip.antiAlias,
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minWidth: MediaQuery.of(context).size.width - 32,
-              ),
+            child: SizedBox(
+              width: 700, // تحديد عرض ثابت
               child: Column(
                 children: [
                   // Table Header
