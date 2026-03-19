@@ -1013,50 +1013,68 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               ]
             : null,
       ),
-      body: _isEditMode
-          ? Selector<LawsuitProvider, (bool, bool)>(
-              // نراقب isLoading + وجود selectedLawsuit فقط
-              // تغييرات isLoadingHearings/isLoadingJudgments لا تُعيد بناء الفورم كله
-              selector: (_, p) =>
-                  (p.isLoading, p.selectedLawsuit != null),
+      body: Stack(
+        children: [
+          // الفورم دائماً موجود في الخلفية لتفادي أخطاء إعادة البناء وتدمير الـ State
+          _buildForm(),
+          
+          // طبقة التحميل أو الخطأ تظهر فوق الفورم في وضع التعديل
+          if (_isEditMode)
+            Selector<LawsuitProvider, (bool, bool)>(
+              selector: (_, p) => (p.isLoading, p.selectedLawsuit != null),
               builder: (context, data, _) {
                 final isLoading = data.$1;
                 final hasLawsuit = data.$2;
+                
                 if (isLoading && !hasLawsuit) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                        color: Color(0xFFD4AF37)),
-                  );
-                }
-                if (!isLoading && !hasLawsuit) {
-                  // فشل التحميل — زر إعادة المحاولة
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.cloud_off,
-                            size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text('تعذّر تحميل بيانات الدعوى',
-                            style: TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 12),
-                        ElevatedButton.icon(
-                          onPressed: _loadLawsuit,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('إعادة المحاولة'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFD4AF37),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
+                  return Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Color(0xFFD4AF37)),
                     ),
                   );
                 }
-                return _buildForm();
+                
+                if (!isLoading && !hasLawsuit) {
+                  // فشل التحميل — زر إعادة المحاولة
+                  return Container(
+                    color: Theme.of(context).scaffoldBackgroundColor,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.cloud_off, size: 64, color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text('تعذّر تحميل بيانات الدعوى', style: TextStyle(color: Colors.grey)),
+                          const SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: () {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _loadLawsuit();
+                                _loadParties();
+                                _loadAttachments();
+                                _loadGovernorates();
+                              });
+                            },
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('إعادة المحاولة'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFD4AF37),
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+                
+                // إذا تم التحميل بنجاح، نخفي طبقة التغطية
+                return const SizedBox.shrink();
               },
-            )
-          : _buildForm(),
+            ),
+        ],
+      ),
     );
   }
 
