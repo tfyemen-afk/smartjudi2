@@ -106,21 +106,28 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     }
 
     // تنظيف `LawsuitProvider` قبل الاستخدام وتجنب الاحتفاظ ببيانات قديمة
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      
       final provider = Provider.of<LawsuitProvider>(context, listen: false);
       if (_isEditMode) {
         // تأكد أن الدعوى المحددة حاليًا هي المطلوبة، أو نظّفها
         if (provider.selectedLawsuit?.id != widget.lawsuitId) {
           provider.clearSelectedLawsuit();
         }
-        _loadLawsuit();
-        _loadParties();
-        _loadAttachments();
+        await _loadLawsuit();
+        if (mounted) {
+          _loadParties();
+          _loadAttachments();
+        }
       } else {
         provider.clearSelectedLawsuit();
         _loadTemplates(_selectedCaseType!);
       }
-      _loadGovernorates();
+      
+      if (mounted) {
+        _loadGovernorates();
+      }
     });
   }
 
@@ -421,10 +428,11 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       }
 
       // تحميل الجلسات والأحكام بعد اكتمال تحميل الدعوى
-      // (نؤجّل حتى هنا لتفادي تزامن notifyListeners مع تحميل الدعوى)
       if (mounted) {
-        await provider.loadHearings(widget.lawsuitId!);
-        await provider.loadJudgments(widget.lawsuitId!);
+        // We do not await these here so the screen can render immediately,
+        // the sub-sections will show their own loading spinners.
+        provider.loadHearings(widget.lawsuitId!).catchError((_) {});
+        provider.loadJudgments(widget.lawsuitId!).catchError((_) {});
       }
     }
   }
