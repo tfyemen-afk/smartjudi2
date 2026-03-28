@@ -193,7 +193,7 @@ class LawsuitViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if hasattr(user, 'profile'):
             user_role = user.profile.role
-            if user_role == 'citizen' and instance.created_by != user:
+            if user_role == 'citizen' and instance.created_by != user and instance.citizen != user:
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You can only update your own lawsuits")
         serializer.save()
@@ -203,7 +203,7 @@ class LawsuitViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if hasattr(user, 'profile'):
             user_role = user.profile.role
-            if user_role == 'citizen' and instance.created_by != user:
+            if user_role == 'citizen' and instance.created_by != user and instance.citizen != user:
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You can only delete your own lawsuits")
         # Soft delete
@@ -216,11 +216,14 @@ class LawsuitViewSet(viewsets.ModelViewSet):
         # Filter out soft-deleted by default
         if not self.request.query_params.get('include_deleted'):
             queryset = queryset.filter(is_deleted=False)
-        # Citizens can only see their own lawsuits
+        # Filter based on role
         if hasattr(self.request.user, 'profile'):
             user_role = self.request.user.profile.role
+            from django.db.models import Q
             if user_role == 'citizen':
-                queryset = queryset.filter(created_by=self.request.user)
+                queryset = queryset.filter(Q(created_by=self.request.user) | Q(citizen=self.request.user))
+            elif user_role == 'lawyer':
+                queryset = queryset.filter(lawyer=self.request.user)
         return queryset
     
     # ========== Archive Actions ==========

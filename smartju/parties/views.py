@@ -34,10 +34,20 @@ class PlaintiffViewSet(viewsets.ModelViewSet):
             if hasattr(user, 'profile'):
                 user_role = user.profile.role
                 # Citizens can only add parties to their own lawsuits
-                if user_role == 'citizen' and lawsuit.created_by != user:
+                if user_role == 'citizen' and lawsuit.created_by != user and lawsuit.citizen != user:
                     from rest_framework.exceptions import PermissionDenied
                     raise PermissionDenied("You can only add parties to your own lawsuits")
-        serializer.save()
+        
+        instance = serializer.save()
+        
+        # Phase 3 Data Consistency
+        if instance.lawsuit and not instance.lawsuit.citizen and instance.id_number:
+            from accounts.models import UserProfile
+            # Find citizen profile with this ID
+            profile = UserProfile.objects.filter(national_id=instance.id_number, role='citizen').first()
+            if profile and profile.user:
+                instance.lawsuit.citizen = profile.user
+                instance.lawsuit.save(update_fields=['citizen'])
 
 
 class DefendantViewSet(viewsets.ModelViewSet):
@@ -68,7 +78,7 @@ class DefendantViewSet(viewsets.ModelViewSet):
             if hasattr(user, 'profile'):
                 user_role = user.profile.role
                 # Citizens can only add parties to their own lawsuits
-                if user_role == 'citizen' and lawsuit.created_by != user:
+                if user_role == 'citizen' and lawsuit.created_by != user and lawsuit.citizen != user:
                     from rest_framework.exceptions import PermissionDenied
                     raise PermissionDenied("You can only add parties to your own lawsuits")
         serializer.save()

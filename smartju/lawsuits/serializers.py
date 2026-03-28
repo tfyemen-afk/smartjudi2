@@ -41,6 +41,7 @@ class LawsuitSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
     archived_by = UserSerializer(read_only=True)
     lawyer_detail = UserSerializer(source='lawyer', read_only=True)
+    citizen_detail = UserSerializer(source='citizen', read_only=True)
 
     case_type_display = serializers.CharField(source='get_case_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -72,6 +73,7 @@ class LawsuitSerializer(serializers.ModelSerializer):
             'court_level', 'court_level_display',
             'department',
             'lawyer', 'lawyer_detail', 'lawyer_name',
+            'citizen', 'citizen_detail',
             # Case content
             'subject', 'description', 'facts', 'legal_basis', 'legal_reasons', 'reasons',
             'requests', 'status', 'status_display', 'notes',
@@ -93,7 +95,7 @@ class LawsuitSerializer(serializers.ModelSerializer):
         read_only_fields = (
             'id', 'created_at', 'updated_at',
             'archive_date', 'archived_by', 'is_deleted', 'deleted_at',
-            'court_level_display', 'lawyer_detail',
+            'court_level_display', 'lawyer_detail', 'citizen_detail',
         )
 
     def get_child_lawsuits_count(self, obj):
@@ -133,7 +135,7 @@ class LawsuitCreateSerializer(serializers.ModelSerializer):
             'facts', 'legal_basis', 'legal_reasons', 'reasons', 'requests',
             'status', 'notes', 'parent_lawsuit',
             # New fields
-            'court_level', 'department', 'lawyer',
+            'court_level', 'department', 'lawyer', 'citizen',
         )
 
 
@@ -150,7 +152,7 @@ class LawsuitUpdateSerializer(serializers.ModelSerializer):
             'facts', 'legal_basis', 'legal_reasons', 'reasons', 'requests',
             'status', 'notes', 'archive_status', 'parent_lawsuit',
             # New fields
-            'court_level', 'department', 'lawyer',
+            'court_level', 'department', 'lawyer', 'citizen',
             # AI fields (can be updated by AI analysis action)
             'ai_summary', 'related_laws', 'similar_cases',
             'legal_risk_level', 'success_probability', 'rag_metadata',

@@ -61,6 +61,10 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
   bool _isLoadingGovernorates = false;
   bool _isLoadingCourts = false;
   
+  int? _selectedCitizenId;
+  List<Map<String, dynamic>> _citizens = [];
+  bool _isLoadingCitizens = false;
+  
   bool _isLoadingTemplates = false;
   Map<String, dynamic>? _templates;
   List<String> _templateKeys = [];
@@ -172,8 +176,42 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       
       if (mounted) {
         _loadGovernorates();
+        _loadCitizens();
       }
     });
+  }
+
+  Future<void> _loadCitizens() async {
+    if (!mounted) return;
+    
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (!authProvider.isAuthenticated || authProvider.currentUser?.role == 'citizen') {
+      return;
+    }
+    
+    setState(() {
+      _isLoadingCitizens = true;
+    });
+    
+    try {
+      final citizens = await authProvider.apiService.getCitizens();
+      if (mounted) {
+        setState(() {
+          _citizens = citizens;
+          // Ensure selected citizen exists in the list
+          if (_selectedCitizenId != null && !_citizens.any((c) => c['user']['id'] == _selectedCitizenId)) {
+            _selectedCitizenId = null;
+          }
+          _isLoadingCitizens = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingCitizens = false;
+        });
+      }
+    }
   }
 
   @override
@@ -430,6 +468,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       _selectedCaseType = lawsuit.caseType;
       _selectedCaseStatus = lawsuit.caseStatus ?? 'جديد';
       _selectedGovernorate = lawsuit.governorate;
+      _selectedCitizenId = lawsuit.citizenId;
       
       // البحث عن ID المحافظة من القائمة المحملة
       if (_selectedGovernorate != null) {
@@ -853,6 +892,7 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
       gregorianDate: _filingDateGregorian,
       hijriDate: hijriDate,
       courtId: _selectedCourtId,
+      citizenId: _selectedCitizenId,
       courtLevel: _selectedCourtLevel,
       department: _departmentController.text.trim().isEmpty
           ? null
@@ -1299,6 +1339,41 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
                 return null;
               },
             ),
+            
+            // Assign Citizen (Lawyer View)
+            if (context.read<AuthProvider>().currentUser?.role != 'citizen') ...[
+              const SizedBox(height: 16),
+              _isLoadingCitizens
+                  ? const Center(child: CircularProgressIndicator())
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCitizenId,
+                      decoration: const InputDecoration(
+                        labelText: 'إسناد القضية لمواطن (عميل)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      items: [
+                        const DropdownMenuItem<int>(
+                          value: null,
+                          child: Text('غير مسند', style: TextStyle(color: Colors.grey)),
+                        ),
+                        ..._citizens.map((c) {
+                          final user = c['user'];
+                          final name = '${user['first_name']} ${user['last_name']}'.trim();
+                          final display = name.isNotEmpty ? name : user['username'];
+                          return DropdownMenuItem<int>(
+                            value: user['id'],
+                            child: Text(display),
+                          );
+                        }),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedCitizenId = value;
+                        });
+                      },
+                    ),
+            ],
             const SizedBox(height: 16),
             
             // Governorate and Court

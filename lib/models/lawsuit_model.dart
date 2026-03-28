@@ -48,6 +48,13 @@ class LawsuitModel {
   /// اسم المحامي للعرض (قادم من backend)
   final String? lawyerName;
 
+  // ── Citizen assignment (Step 3) ────────────────────────────────────────────
+  /// معرّف المواطن / العميل
+  final int? citizenId;
+
+  /// اسم المواطن للعرض
+  final String? citizenName;
+
   // ── Archive lifecycle fields ───────────────────────────────────────────────
   final String archiveStatus;
   final DateTime? archiveDate;
@@ -112,6 +119,8 @@ class LawsuitModel {
     this.department,
     this.lawyerId,
     this.lawyerName,
+    this.citizenId,
+    this.citizenName,
     // Archive
     this.archiveStatus = 'active',
     this.archiveDate,
@@ -182,6 +191,9 @@ class LawsuitModel {
       // Lawyer
       lawyerId: json['lawyer'] ?? json['lawyer_id'],
       lawyerName: json['lawyer_name'],
+      // Citizen
+      citizenId: json['citizen'] ?? json['citizen_id'],
+      citizenName: json['citizen_detail'] != null ? '${json['citizen_detail']['first_name']} ${json['citizen_detail']['last_name']}'.trim() : null,
       // Archive fields
       archiveStatus: json['archive_status'] ?? 'active',
       archiveDate: json['archive_date'] != null
@@ -239,6 +251,7 @@ class LawsuitModel {
       if (courtLevel != null) 'court_level': courtLevel,
       if (department != null) 'department': department,
       if (lawyerId != null) 'lawyer': lawyerId,
+      if (citizenId != null) 'citizen': citizenId,
     };
   }
 

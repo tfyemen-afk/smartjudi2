@@ -307,6 +307,16 @@ class Lawsuit(models.Model):
         verbose_name='المحامي'
     )
 
+    # المواطن / العميل المسؤول عن القضية
+    citizen = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_lawsuits',
+        verbose_name='المواطن'
+    )
+
     # ========== AI Legal Analysis Layer (Step 7) ==========
 
     # ملخص ذكاء اصطناعي للقضية
@@ -455,6 +465,7 @@ class Lawsuit(models.Model):
             models.Index(fields=['parent_lawsuit']),
             models.Index(fields=['court_level']),
             models.Index(fields=['lawyer']),
+            models.Index(fields=['citizen']),
             models.Index(fields=['legal_risk_level']),
         ]
     

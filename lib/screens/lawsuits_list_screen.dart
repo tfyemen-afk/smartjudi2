@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/lawsuit_provider.dart';
 import '../models/lawsuit_model.dart';
+import '../providers/auth_provider.dart';
 import 'lawsuit_detail_screen.dart';
 
 /// Lawsuits List Screen
@@ -43,42 +44,48 @@ class _LawsuitsListScreenState extends State<LawsuitsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final isCitizen = authProvider.currentUser?.role == 'citizen';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('قائمة الدعاوى'),
+        title: Text(isCitizen ? 'قضاياي' : 'قائمة الدعاوى'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const LawsuitDetailScreen(),
-                ),
-              ).then((_) {
-                // Refresh list after returning
-                Provider.of<LawsuitProvider>(context, listen: false).loadLawsuits(refresh: true);
-              });
-            },
-            tooltip: 'إضافة دعوى جديدة',
-          ),
+          if (!isCitizen)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LawsuitDetailScreen(),
+                  ),
+                ).then((_) {
+                  // Refresh list after returning
+                  Provider.of<LawsuitProvider>(context, listen: false).loadLawsuits(refresh: true);
+                });
+              },
+              tooltip: 'إضافة دعوى جديدة',
+            ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const LawsuitDetailScreen(),
+      floatingActionButton: isCitizen
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const LawsuitDetailScreen(),
+                  ),
+                ).then((_) {
+                  // Refresh list after returning
+                  Provider.of<LawsuitProvider>(context, listen: false).loadLawsuits(refresh: true);
+                });
+              },
+              child: const Icon(Icons.add),
+              tooltip: 'إضافة دعوى جديدة',
             ),
-          ).then((_) {
-            // Refresh list after returning
-            Provider.of<LawsuitProvider>(context, listen: false).loadLawsuits(refresh: true);
-          });
-        },
-        child: const Icon(Icons.add),
-        tooltip: 'إضافة دعوى جديدة',
-      ),
       body: Consumer<LawsuitProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.lawsuits.isEmpty) {

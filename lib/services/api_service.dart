@@ -382,6 +382,20 @@ class ApiService {
     }
   }
 
+  // Get list of citizens for lawyer to assign
+  Future<List<Map<String, dynamic>>> getCitizens() async {
+    try {
+      final response = await _makeRequest('GET', '${ApiConfig.profilesEndpoint}?role=citizen');
+      if (response['results'] != null) {
+        return List<Map<String, dynamic>>.from(response['results']);
+      }
+      return [];
+    } catch (e) {
+      print('❌ [API] Error fetching citizens: $e');
+      return [];
+    }
+  }
+
   // Lawsuits
   Future<Map<String, dynamic>> getLawsuits({Map<String, String>? queryParams}) async {
     String endpoint = ApiConfig.lawsuitsEndpoint;
