@@ -214,6 +214,168 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
     }
   }
 
+  /// حقل اختيار المواطن مع دعم البحث داخل Dialog
+  Widget _buildCitizenPicker() {
+    // اسم المواطن المختار حالياً
+    String selectedLabel = 'غير مسند';
+    if (_selectedCitizenId != null) {
+      final match = _citizens.where((c) => c['user']['id'] == _selectedCitizenId).firstOrNull;
+      if (match != null) {
+        final user = match['user'];
+        final name = '${user['first_name']} ${user['last_name']}'.trim();
+        selectedLabel = name.isNotEmpty ? name : (user['username'] ?? 'غير مسند');
+      }
+    }
+
+    return InkWell(
+      onTap: () => _showCitizenSearchDialog(),
+      borderRadius: BorderRadius.circular(4),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: 'إسناد القضية لمواطن (عميل)',
+          border: const OutlineInputBorder(),
+          prefixIcon: const Icon(Icons.person_search),
+          suffixIcon: _selectedCitizenId != null
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  tooltip: 'إلغاء الاختيار',
+                  onPressed: () => setState(() => _selectedCitizenId = null),
+                )
+              : const Icon(Icons.arrow_drop_down),
+        ),
+        child: Text(
+          selectedLabel,
+          style: TextStyle(
+            color: _selectedCitizenId != null ? null : Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Dialog بحث وتصفية المواطنين
+  Future<void> _showCitizenSearchDialog() async {
+    String query = '';
+    List<Map<String, dynamic>> filtered = List.of(_citizens);
+
+    final result = await showDialog<int?>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            void applyFilter(String q) {
+              setDialogState(() {
+                query = q;
+                filtered = _citizens.where((c) {
+                  final user = c['user'];
+                  final name = '${user['first_name']} ${user['last_name']}'.trim().toLowerCase();
+                  final username = (user['username'] ?? '').toLowerCase();
+                  return name.contains(q.toLowerCase()) || username.contains(q.toLowerCase());
+                }).toList();
+              });
+            }
+
+            return AlertDialog(
+              title: const Text('اختيار المواطن', textAlign: TextAlign.right),
+              contentPadding: const EdgeInsets.fromLTRB(8, 16, 8, 0),
+              content: SizedBox(
+                width: 360,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // حقل البحث
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: TextField(
+                        autofocus: true,
+                        textAlign: TextAlign.right,
+                        decoration: const InputDecoration(
+                          hintText: 'ابحث بالاسم أو اسم المستخدم...',
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        onChanged: applyFilter,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // خيار "غير مسند"
+                    ListTile(
+                      leading: const Icon(Icons.person_off, color: Colors.grey),
+                      title: const Text('غير مسند', style: TextStyle(color: Colors.grey)),
+                      onTap: () => Navigator.pop(dialogContext, -1), // -1 = clear
+                    ),
+                    const Divider(height: 1),
+                    // قائمة المواطنين
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 300),
+                      child: filtered.isEmpty
+                          ? const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Text('لا توجد نتائج', textAlign: TextAlign.center),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (_, i) {
+                                final user = filtered[i]['user'];
+                                final id = user['id'] as int;
+                                final name = '${user['first_name']} ${user['last_name']}'.trim();
+                                final display = name.isNotEmpty ? name : (user['username'] ?? '');
+                                final isSelected = _selectedCitizenId == id;
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.grey[300],
+                                    child: Text(
+                                      display.isNotEmpty ? display[0].toUpperCase() : '?',
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white : Colors.black54,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  title: Text(display, textAlign: TextAlign.right),
+                                  subtitle: Text(
+                                    user['username'] ?? '',
+                                    textAlign: TextAlign.right,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  trailing: isSelected
+                                      ? Icon(Icons.check_circle,
+                                          color: Theme.of(context).colorScheme.primary)
+                                      : null,
+                                  onTap: () => Navigator.pop(dialogContext, id),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('إلغاء'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedCitizenId = result == -1 ? null : result;
+      });
+    }
+  }
+
+
+
   @override
   void dispose() {
     _caseNumberController.dispose();
@@ -1340,39 +1502,12 @@ class _LawsuitDetailScreenState extends State<LawsuitDetailScreen> {
               },
             ),
             
-            // Assign Citizen (Lawyer View)
+            // Assign Citizen (Lawyer View) — searchable picker
             if (context.read<AuthProvider>().currentUser?.role != 'citizen') ...[
               const SizedBox(height: 16),
               _isLoadingCitizens
                   ? const Center(child: CircularProgressIndicator())
-                  : DropdownButtonFormField<int>(
-                      value: _selectedCitizenId,
-                      decoration: const InputDecoration(
-                        labelText: 'إسناد القضية لمواطن (عميل)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
-                      ),
-                      items: [
-                        const DropdownMenuItem<int>(
-                          value: null,
-                          child: Text('غير مسند', style: TextStyle(color: Colors.grey)),
-                        ),
-                        ..._citizens.map((c) {
-                          final user = c['user'];
-                          final name = '${user['first_name']} ${user['last_name']}'.trim();
-                          final display = name.isNotEmpty ? name : user['username'];
-                          return DropdownMenuItem<int>(
-                            value: user['id'],
-                            child: Text(display),
-                          );
-                        }),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCitizenId = value;
-                        });
-                      },
-                    ),
+                  : _buildCitizenPicker(),
             ],
             const SizedBox(height: 16),
             

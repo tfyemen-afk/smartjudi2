@@ -4,6 +4,27 @@ from accounts.serializers import UserSerializer
 from courts.serializers import CourtSerializer
 
 
+def _auto_link_citizen_from_plaintiffs(lawsuit):
+    """
+    إذا لم يكن للدعوى مواطن مرتبط، يبحث في المدعين عن رقم هوية
+    يطابق UserProfile بدور 'citizen' ويربطه بالدعوى تلقائياً.
+    """
+    from accounts.models import UserProfile
+    plaintiffs_with_id = lawsuit.plaintiffs.filter(
+        id_number__isnull=False
+    ).exclude(id_number='')
+
+    for plaintiff in plaintiffs_with_id:
+        profile = UserProfile.objects.filter(
+            national_id=plaintiff.id_number,
+            role='citizen'
+        ).select_related('user').first()
+        if profile and profile.user:
+            lawsuit.citizen = profile.user
+            lawsuit.save(update_fields=['citizen'])
+            break
+
+
 class LegalTemplateSerializer(serializers.ModelSerializer):
     """
     Serializer for LegalTemplate model
@@ -138,6 +159,13 @@ class LawsuitCreateSerializer(serializers.ModelSerializer):
             'court_level', 'department', 'lawyer', 'citizen',
         )
 
+    def create(self, validated_data):
+        instance = super().create(validated_data)
+        # بعد الإنشاء: إن لم يُحدَّد المواطن يدوياً نبحث عنه من أرقام هوية المدعين
+        if not instance.citizen:
+            _auto_link_citizen_from_plaintiffs(instance)
+        return instance
+
 
 class LawsuitUpdateSerializer(serializers.ModelSerializer):
     """
@@ -157,3 +185,10 @@ class LawsuitUpdateSerializer(serializers.ModelSerializer):
             'ai_summary', 'related_laws', 'similar_cases',
             'legal_risk_level', 'success_probability', 'rag_metadata',
         )
+
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        # بعد التحديث: إن لم يُحدَّد المواطن يدوياً نبحث عنه من أرقام هوية المدعين
+        if not instance.citizen:
+            _auto_link_citizen_from_plaintiffs(instance)
+        return instance
